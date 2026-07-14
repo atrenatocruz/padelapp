@@ -210,10 +210,6 @@ export function MixCard({ game, joined = false }) {
           <span className="inline-flex items-center gap-1.5 bg-volt-400 text-court-900 text-xs font-extrabold px-3 py-1.5 rounded-full">
             <CheckCircle2 size={14} /> Inscrito
           </span>
-        ) : isClosed ? (
-          <span className="inline-flex items-center gap-1.5 bg-ok/10 text-ok text-xs font-extrabold px-3 py-1.5 rounded-full">
-            <Lock size={14} /> Mix fechado — campo reservado
-          </span>
         ) : isDone ? (
           <span className="inline-flex items-center gap-1.5 bg-court-100 text-court-700 text-xs font-extrabold px-3 py-1.5 rounded-full">
             <CheckCircle2 size={14} /> Terminado
@@ -236,6 +232,11 @@ export function MixCard({ game, joined = false }) {
         {game.status === 'open' && !joined && !isFull && (
           <span className="inline-flex items-center gap-0.5 text-court-600 text-sm font-extrabold">
             Jogar <ChevronRight size={17} />
+          </span>
+        )}
+        {isClosed && !isLive && !isDone && (
+          <span className="inline-flex items-center gap-1.5 bg-ok/10 text-ok text-[11px] font-extrabold px-2.5 py-1 rounded-full">
+            <Lock size={13} className="shrink-0" /> Mix fechado — campo reservado
           </span>
         )}
       </div>
