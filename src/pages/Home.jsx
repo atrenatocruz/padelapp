@@ -37,8 +37,10 @@ export default function Home() {
           participants (
             id,
             user_id,
+            partner_id,
             status,
-            user:profiles!participants_user_id_fkey (name, level, is_guest)
+            user:profiles!participants_user_id_fkey (name, level, is_guest),
+            partner:profiles!participants_partner_id_fkey (name, level, is_guest)
           )
         `)
         .order('date', { ascending: true })
@@ -60,7 +62,7 @@ export default function Home() {
   }
 
   const isUserJoined = (game) => {
-    return game.participants?.some(p => p.user_id === user.id)
+    return game.participants?.some(p => p.user_id === user.id || p.partner_id === user.id)
   }
 
   if (loading) {

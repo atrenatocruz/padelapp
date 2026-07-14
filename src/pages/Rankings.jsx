@@ -38,26 +38,24 @@ export default function Rankings() {
           user:profiles!player_stats_user_id_fkey!inner (name, level, is_guest)
         `)
         .eq('user.is_guest', false)
-        .order('games_won', { ascending: false })
-        .order('rating', { ascending: false })
 
       if (error) throw error
 
-      // Calculate win rate and sort
+      // Ranking: mix wins → game wins → win rate
       const rankedData = data
-        .map(player => ({
-          ...player,
-          winRate: player.games_played > 0
-            ? ((player.games_won / player.games_played) * 100).toFixed(1)
-            : 0
-        }))
-        .sort((a, b) => {
-          // Sort by games won, then by win rate
-          if (b.games_won !== a.games_won) {
-            return b.games_won - a.games_won
+        .map(player => {
+          const played = (player.game_wins || 0) + (player.game_losses || 0)
+          return {
+            ...player,
+            gamesPlayed: played,
+            winRate: played > 0 ? ((player.game_wins / played) * 100).toFixed(0) : 0,
           }
-          return b.winRate - a.winRate
         })
+        .sort((a, b) =>
+          (b.mix_wins || 0) - (a.mix_wins || 0) ||
+          (b.game_wins || 0) - (a.game_wins || 0) ||
+          b.winRate - a.winRate
+        )
 
       setRankings(rankedData)
     } catch (error) {
@@ -123,25 +121,25 @@ export default function Rankings() {
                   <div className="flex items-center gap-1.5 justify-end">
                     <Trophy size={15} className="text-volt-500" />
                     <span className="text-2xl font-extrabold text-court-900 tabular-nums">
-                      {player.games_won}
+                      {player.mix_wins || 0}
                     </span>
                   </div>
-                  <p className="text-[11px] text-muted">vitórias</p>
+                  <p className="text-[11px] text-muted">mixes ganhos</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-3 gap-3 mt-4 pt-3.5 border-t border-line text-center">
                 <div>
-                  <p className="text-lg font-extrabold text-court-900 tabular-nums">{player.games_played}</p>
-                  <p className="text-[11px] text-muted">jogos</p>
+                  <p className="text-lg font-extrabold text-ok tabular-nums">{player.game_wins || 0}</p>
+                  <p className="text-[11px] text-muted">jogos ganhos</p>
                 </div>
                 <div>
-                  <p className="text-lg font-extrabold text-ok tabular-nums">{player.winRate}%</p>
+                  <p className="text-lg font-extrabold text-danger tabular-nums">{player.game_losses || 0}</p>
+                  <p className="text-[11px] text-muted">jogos perdidos</p>
+                </div>
+                <div>
+                  <p className="text-lg font-extrabold text-court-600 tabular-nums">{player.winRate}%</p>
                   <p className="text-[11px] text-muted">taxa vitória</p>
-                </div>
-                <div>
-                  <p className="text-lg font-extrabold text-court-600 tabular-nums">{player.total_points_scored}</p>
-                  <p className="text-[11px] text-muted">pontos</p>
                 </div>
               </div>
             </div>

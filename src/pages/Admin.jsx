@@ -1,6 +1,57 @@
 import { useState, useEffect } from 'react'
 import { Plus, Calendar, Users, Trash2, Edit2, Check, X } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { totalRounds, FORMAT_LABEL } from '../lib/mixLogic'
+
+const COURT_TIMES = [
+  { value: 60, label: '1h' },
+  { value: 90, label: '1h30' },
+  { value: 120, label: '2h' },
+  { value: 150, label: '2h30' },
+  { value: 180, label: '3h' },
+]
+const GAME_TIMES = [
+  { value: 10, label: '10min' },
+  { value: 15, label: '15min' },
+  { value: 20, label: '20min' },
+  { value: 30, label: '30min' },
+]
+const FORMATS = [
+  { value: 'sobe_desce', label: 'Sobe e desce' },
+  { value: 'todos_contra_todos', label: 'Todos contra todos' },
+]
+
+const EMPTY_GAME_FORM = {
+  title: '',
+  date: '',
+  location: '',
+  num_courts: 1,
+  court_time_minutes: 90,
+  game_time_minutes: 20,
+  format: 'sobe_desce',
+}
+
+/* Segmented tab selector for form options */
+function Segmented({ options, value, onChange }) {
+  return (
+    <div className="flex gap-1.5 flex-wrap">
+      {options.map(opt => (
+        <button
+          key={opt.value}
+          type="button"
+          onClick={() => onChange(opt.value)}
+          className={`px-3.5 py-2 min-h-[44px] rounded-ctrl text-sm font-extrabold transition-all duration-fast ${
+            value === opt.value
+              ? 'bg-court-900 text-white'
+              : 'bg-surface text-muted border border-line hover:text-court-900'
+          }`}
+        >
+          {opt.label}
+        </button>
+      ))}
+    </div>
+  )
+}
 
 export default function Admin() {
   const [activeTab, setActiveTab] = useState('games') // 'games', 'members', 'settings'
@@ -10,14 +61,9 @@ export default function Admin() {
   const [loading, setLoading] = useState(true)
   const [showCreateGame, setShowCreateGame] = useState(false)
   const [editingGame, setEditingGame] = useState(null)
-  
+
   // Form states
-  const [gameForm, setGameForm] = useState({
-    title: '',
-    date: '',
-    location: '',
-    max_players: 4
-  })
+  const [gameForm, setGameForm] = useState(EMPTY_GAME_FORM)
 
   useEffect(() => {
     loadData()
@@ -47,6 +93,7 @@ export default function Admin() {
           participants (
             id,
             user_id,
+            partner_id,
             status
           )
         `)
@@ -112,6 +159,7 @@ export default function Admin() {
         .insert([
           {
             ...gameForm,
+            max_players: gameForm.num_courts * 4, // derived
             created_by: user.id,
             status: 'open'
           }
@@ -124,9 +172,8 @@ export default function Admin() {
       }
 
       console.log('Game created successfully:', data)
-      alert('Jogo criado com sucesso!')
       setShowCreateGame(false)
-      setGameForm({ title: '', date: '', location: '', max_players: 4 })
+      setGameForm(EMPTY_GAME_FORM)
       loadGames()
     } catch (error) {
       console.error('Error creating game:', error)
@@ -140,14 +187,13 @@ export default function Admin() {
     try {
       const { error } = await supabase
         .from('games')
-        .update(gameForm)
+        .update({ ...gameForm, max_players: gameForm.num_courts * 4 })
         .eq('id', editingGame.id)
 
       if (error) throw error
 
-      alert('Jogo atualizado com sucesso!')
       setEditingGame(null)
-      setGameForm({ title: '', date: '', location: '', max_players: 4 })
+      setGameForm(EMPTY_GAME_FORM)
       loadGames()
     } catch (error) {
       console.error('Error updating game:', error)
@@ -228,7 +274,10 @@ export default function Admin() {
       title: game.title,
       date: new Date(game.date).toISOString().slice(0, 16),
       location: game.location || '',
-      max_players: game.max_players
+      num_courts: game.num_courts || 1,
+      court_time_minutes: game.court_time_minutes || 90,
+      game_time_minutes: game.game_time_minutes || 20,
+      format: game.format || 'sobe_desce',
     })
   }
 
@@ -341,16 +390,55 @@ export default function Admin() {
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Número máximo de jogadores
+                        Número de campos
                       </label>
                       <input
                         type="number"
-                        value={gameForm.max_players}
-                        onChange={(e) => setGameForm({ ...gameForm, max_players: parseInt(e.target.value) })}
+                        value={gameForm.num_courts}
+                        onChange={(e) => setGameForm({ ...gameForm, num_courts: Math.max(1, parseInt(e.target.value) || 1) })}
                         className="input-field"
-                        min="2"
-                        max="8"
+                        min="1"
+                        max="6"
                         required
+                      />
+                      <p className="text-sm text-muted mt-1.5">
+                        = <strong className="text-court-900">{(gameForm.num_courts || 1) * 4} jogadores</strong> ({gameForm.num_courts || 1} {gameForm.num_courts === 1 ? 'campo' : 'campos'} × 4)
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Tempo do court
+                      </label>
+                      <Segmented
+                        options={COURT_TIMES}
+                        value={gameForm.court_time_minutes}
+                        onChange={(v) => setGameForm({ ...gameForm, court_time_minutes: v })}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Tempo de jogo
+                      </label>
+                      <Segmented
+                        options={GAME_TIMES}
+                        value={gameForm.game_time_minutes}
+                        onChange={(v) => setGameForm({ ...gameForm, game_time_minutes: v })}
+                      />
+                      <p className="text-sm text-muted mt-1.5">
+                        = <strong className="text-court-900">{totalRounds(gameForm)} rondas</strong> ({gameForm.court_time_minutes}min ÷ {gameForm.game_time_minutes}min)
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Formato
+                      </label>
+                      <Segmented
+                        options={FORMATS}
+                        value={gameForm.format}
+                        onChange={(v) => setGameForm({ ...gameForm, format: v })}
                       />
                     </div>
 
@@ -363,7 +451,7 @@ export default function Admin() {
                         onClick={() => {
                           setShowCreateGame(false)
                           setEditingGame(null)
-                          setGameForm({ title: '', date: '', location: '', max_players: 4 })
+                          setGameForm(EMPTY_GAME_FORM)
                         }}
                         className="btn-secondary flex-1"
                       >
@@ -377,8 +465,10 @@ export default function Admin() {
               {/* Games List */}
               <div className="space-y-3">
                 {games.map(game => {
-                  const confirmedCount = game.participants?.filter(p => p.status === 'confirmed').length || 0
-                  
+                  const peopleCount = (game.participants || [])
+                    .filter(p => p.status === 'confirmed')
+                    .reduce((n, p) => n + 1 + (p.partner_id ? 1 : 0), 0)
+
                   return (
                     <div key={game.id} className="card">
                       <div className="flex items-start justify-between mb-4">
@@ -390,7 +480,10 @@ export default function Admin() {
                             <p>{formatDate(game.date)}</p>
                             {game.location && <p>📍 {game.location}</p>}
                             <p>
-                              👥 {confirmedCount}/{game.max_players} jogadores
+                              👥 {peopleCount}/{game.max_players || (game.num_courts || 1) * 4} jogadores
+                            </p>
+                            <p className="text-sm">
+                              {FORMAT_LABEL[game.format] || 'Sobe e desce'} • {game.num_courts || 1} {(game.num_courts || 1) === 1 ? 'campo' : 'campos'} • {totalRounds(game)} rondas
                             </p>
                           </div>
                         </div>
@@ -416,12 +509,14 @@ export default function Admin() {
                       <div className={`inline-block px-4 py-2 rounded-xl font-medium ${
                         game.status === 'open' ? 'bg-blue-100 text-blue-700' :
                         game.status === 'closed' ? 'bg-green-100 text-green-700' :
-                        game.status === 'completed' ? 'bg-gray-100 text-gray-700' :
+                        game.status === 'in_progress' ? 'bg-volt-400 text-court-900' :
+                        game.status === 'completed' || game.status === 'finished' ? 'bg-gray-100 text-gray-700' :
                         'bg-red-100 text-red-700'
                       }`}>
                         {game.status === 'open' && 'Aberto'}
-                        {game.status === 'closed' && 'Fechado'}
-                        {game.status === 'completed' && 'Terminado'}
+                        {game.status === 'closed' && 'Mix fechado — campo reservado'}
+                        {game.status === 'in_progress' && 'A decorrer'}
+                        {(game.status === 'completed' || game.status === 'finished') && 'Terminado'}
                         {game.status === 'cancelled' && 'Cancelado'}
                       </div>
                     </div>

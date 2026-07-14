@@ -98,8 +98,10 @@ export default function Instructions() {
               </div>
               <div>
                 <p className="text-gray-700 leading-relaxed">
-                  Quando 4 pessoas confirmarem, o jogo fecha automaticamente: verás{' '}
-                  <strong className="text-green-600">Jogo fechado — campo reservado</strong>.
+                  Cada mix tem <strong>campos × 4 jogadores</strong> (ex.: 2 campos = 8 jogadores).
+                  Quando enche, verás{' '}
+                  <strong className="text-green-600">Mix fechado — campo reservado</strong> e
+                  deixa de aceitar inscrições.
                 </p>
               </div>
             </div>
@@ -110,8 +112,9 @@ export default function Instructions() {
               </div>
               <div>
                 <p className="text-gray-700 leading-relaxed">
-                  No fim do jogo, abre o jogo e clica em <strong>Registar resultado</strong> — 
-                  escolhe o resultado e confirma.
+                  No teu <strong>Perfil</strong>, define o teu <strong>lado preferido</strong>{' '}
+                  (Esquerda, Direita ou Ambos) — é usado para formar as duplas: quem entra sozinho
+                  é emparelhado juntando um jogador de esquerda com um de direita.
                 </p>
               </div>
             </div>
@@ -122,9 +125,20 @@ export default function Instructions() {
               </div>
               <div>
                 <p className="text-gray-700 leading-relaxed">
-                  Se fores o administrador, vai à página <strong>Admin</strong> para criar novos 
-                  jogos ou confirmar resultados.
+                  Quando o mix está cheio, o admin clica em <strong>Começar o jogo</strong>: as
+                  duplas são formadas, as rondas calculadas (tempo do court ÷ tempo de jogo) e os
+                  jogos sorteados pelos campos conforme o formato.
                 </p>
+                <ul className="mt-2 space-y-1 ml-4">
+                  <li className="text-gray-600">
+                    • <strong>Sobe e desce:</strong> quem ganha sobe um campo, quem perde desce.
+                    Vence o mix a dupla que ganhar no campo 1 na última ronda.
+                  </li>
+                  <li className="text-gray-600">
+                    • <strong>Todos contra todos:</strong> cada dupla joga contra todas as outras;
+                    se sobrarem rondas, há fase eliminatória (meias-finais / final).
+                  </li>
+                </ul>
               </div>
             </div>
 
@@ -134,7 +148,11 @@ export default function Instructions() {
               </div>
               <div>
                 <p className="text-gray-700 leading-relaxed">
-                  Para trocar o logótipo: Admin → Definições → Carregar logo.
+                  Durante o mix, o admin regista o resultado de <strong>cada jogo</strong> (não há
+                  empates). No sobe e desce só se avança de ronda com os resultados todos
+                  submetidos. No fim, o admin clica em <strong>Finalizar jogo</strong> e o ranking
+                  atualiza: vitórias/derrotas de jogos por jogador e <strong>+1 vitória de mix</strong>{' '}
+                  para a dupla vencedora.
                 </p>
               </div>
             </div>
@@ -170,7 +188,8 @@ export default function Instructions() {
             <Trophy size={32} className="text-apple-blue mb-3" />
             <h3 className="text-lg font-semibold text-apple-darkgray mb-2">Ver ranking</h3>
             <p className="text-gray-600">
-              Consulta a tua posição e estatísticas no ranking do grupo.
+              O ranking mostra, por jogador: <strong>mixes ganhos</strong> (vitórias de mix) e{' '}
+              <strong>vitórias/derrotas de jogos</strong> (cada jogo individual dentro dos mixes).
             </p>
           </div>
 
@@ -190,16 +209,22 @@ export default function Instructions() {
           </h3>
           <div className="space-y-3 text-gray-700">
             <p>
-              <strong>Para criar um mix:</strong> Clica em "Criar jogo", escolhe dia e hora e 
-              carregue em "Guardar".
+              <strong>Para criar um mix:</strong> "Criar novo jogo" → define título, data, local,{' '}
+              <strong>nº de campos</strong> (jogadores = campos × 4), <strong>tempo do court</strong>,{' '}
+              <strong>tempo de jogo</strong> (rondas = court ÷ jogo) e o <strong>formato</strong>{' '}
+              (sobe e desce ou todos contra todos).
             </p>
             <p>
-              <strong>Para gerir membros:</strong> Acede ao painel Admin para ver todos os 
+              <strong>Para arrancar o mix:</strong> quando estiver cheio, abre o jogo e clica{' '}
+              <strong>Começar o jogo</strong> — as duplas e o sorteio são automáticos.
+            </p>
+            <p>
+              <strong>Durante o mix:</strong> regista o resultado de cada jogo, avança as rondas
+              e no fim clica <strong>Finalizar jogo</strong> para atualizar o ranking.
+            </p>
+            <p>
+              <strong>Para gerir membros:</strong> Acede ao painel Admin para ver todos os
               jogadores e promover novos admins.
-            </p>
-            <p>
-              <strong>Para confirmar resultados:</strong> Podes ver e confirmar resultados 
-              submetidos pelos jogadores.
             </p>
           </div>
         </div>

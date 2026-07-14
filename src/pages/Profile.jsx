@@ -12,6 +12,7 @@ export default function Profile() {
   const [name, setName] = useState(profile?.name || '')
   const [phone, setPhone] = useState(profile?.phone || '')
   const [level, setLevel] = useState(profile?.level || 'iniciante')
+  const [preferredSide, setPreferredSide] = useState(profile?.preferred_side || 'both')
   const [birthday, setBirthday] = useState(profile?.birthday || '')
   const [gender, setGender] = useState(profile?.gender || '')
   const [stats, setStats] = useState(null)
@@ -23,6 +24,7 @@ export default function Profile() {
       setName(profile.name)
       setPhone(profile.phone || '')
       setLevel(profile.level)
+      setPreferredSide(profile.preferred_side || 'both')
       setBirthday(profile.birthday || '')
       setGender(profile.gender || '')
       if (!profile.is_guest) {
@@ -51,7 +53,7 @@ export default function Profile() {
     setLoading(true)
 
     try {
-      const { error } = await updateProfile({ name, phone, level, birthday, gender })
+      const { error } = await updateProfile({ name, phone, level, preferred_side: preferredSide, birthday, gender })
       if (error) throw error
       setEditing(false)
       setSaved(true)
@@ -64,8 +66,9 @@ export default function Profile() {
     }
   }
 
-  const winRate = stats?.games_played > 0
-    ? ((stats.games_won / stats.games_played) * 100).toFixed(1)
+  const gamesPlayed = (stats?.game_wins || 0) + (stats?.game_losses || 0)
+  const winRate = gamesPlayed > 0
+    ? ((stats.game_wins / gamesPlayed) * 100).toFixed(0)
     : 0
 
   const inputLabel = 'block text-sm font-extrabold text-court-900 mb-2'
@@ -114,11 +117,11 @@ export default function Profile() {
     )
   }
 
-  const statTiles = stats && stats.games_played > 0 ? [
-    { icon: Target, value: stats.games_played, label: 'Jogos', cls: 'text-court-600' },
-    { icon: Trophy, value: stats.games_won, label: 'Vitórias', cls: 'text-volt-500' },
-    { icon: Award, value: `${winRate}%`, label: 'Taxa de vitória', cls: 'text-ok' },
-    { icon: Flame, value: stats.total_points_scored, label: 'Pontos marcados', cls: 'text-court-600' },
+  const statTiles = stats && (gamesPlayed > 0 || (stats.mix_wins || 0) > 0) ? [
+    { icon: Trophy, value: stats.mix_wins || 0, label: 'Mixes ganhos', cls: 'text-volt-500' },
+    { icon: Target, value: gamesPlayed, label: 'Jogos', cls: 'text-court-600' },
+    { icon: Flame, value: stats.game_wins || 0, label: 'Jogos ganhos', cls: 'text-ok' },
+    { icon: Award, value: `${winRate}%`, label: 'Taxa de vitória', cls: 'text-court-600' },
   ] : null
 
   return (
@@ -246,6 +249,20 @@ export default function Profile() {
               </select>
             </div>
 
+            <div>
+              <label className={inputLabel}>Lado preferido</label>
+              <select
+                value={preferredSide}
+                onChange={(e) => setPreferredSide(e.target.value)}
+                className="input-field"
+              >
+                <option value="left">Esquerda</option>
+                <option value="right">Direita</option>
+                <option value="both">Ambos</option>
+              </select>
+              <p className="text-xs text-muted mt-1.5">Usado na formação de duplas dos mixes</p>
+            </div>
+
             <div className="flex gap-3 pt-2">
               <PrimaryButton type="submit" disabled={loading} className="flex-1">
                 {loading ? 'A guardar…' : 'Guardar'}
@@ -301,6 +318,13 @@ export default function Profile() {
             <div>
               <p className={fieldLabel}>Nível de jogo</p>
               <p className={fieldValue}>{profile?.level}</p>
+            </div>
+
+            <div>
+              <p className={fieldLabel}>Lado preferido</p>
+              <p className={fieldValue}>
+                {{ left: 'Esquerda', right: 'Direita', both: 'Ambos' }[profile?.preferred_side] || 'Ambos'}
+              </p>
             </div>
           </div>
         )}

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { MapPin, CheckCircle2, ChevronRight, Lock } from 'lucide-react'
+import { MapPin, CheckCircle2, ChevronRight, Lock, Play } from 'lucide-react'
 
 /* ════════════════════════════════════════════════════════════════════════
    UI kit — Os Padeleiros
@@ -159,14 +159,19 @@ export function EmptyState({ icon: Icon, title, subtitle, action }) {
    Scannable at a glance: when, where, levels, slots, my state.
    States: open | closed (court reservado) | completed | joined. */
 export function MixCard({ game, joined = false }) {
+  // Every person in the game — a row with partner counts as 2 players
   const players = (game.participants || [])
     .filter(p => p.status === 'confirmed')
-    .map(p => ({ id: p.user_id, name: p.user?.name, level: p.user?.level, isGuest: p.user?.is_guest }))
+    .flatMap(p => [
+      { id: p.user_id, name: p.user?.name, level: p.user?.level, isGuest: p.user?.is_guest },
+      ...(p.partner_id ? [{ id: p.partner_id, name: p.partner?.name, level: p.partner?.level, isGuest: p.partner?.is_guest }] : []),
+    ])
 
   // Guests count as players but their (default) level shouldn't skew the range
   const range = levelRange(players.filter(p => !p.isGuest).map(p => p.level))
   const isClosed = game.status === 'closed'
-  const isDone = game.status === 'completed'
+  const isLive = game.status === 'in_progress'
+  const isDone = game.status === 'completed' || game.status === 'finished'
 
   const d = new Date(game.date)
   const today = new Date(); const tomorrow = new Date(today)
@@ -194,13 +199,17 @@ export function MixCard({ game, joined = false }) {
         </div>
 
         {/* State — color + icon, never text alone */}
-        {joined ? (
+        {isLive ? (
+          <span className="inline-flex items-center gap-1.5 bg-volt-400 text-court-900 text-xs font-extrabold px-3 py-1.5 rounded-full">
+            <Play size={14} /> A decorrer
+          </span>
+        ) : joined ? (
           <span className="inline-flex items-center gap-1.5 bg-volt-400 text-court-900 text-xs font-extrabold px-3 py-1.5 rounded-full">
             <CheckCircle2 size={14} /> Inscrito
           </span>
         ) : isClosed ? (
           <span className="inline-flex items-center gap-1.5 bg-ok/10 text-ok text-xs font-extrabold px-3 py-1.5 rounded-full">
-            <Lock size={14} /> Fechado
+            <Lock size={14} /> Mix fechado — campo reservado
           </span>
         ) : isDone ? (
           <span className="inline-flex items-center gap-1.5 bg-court-100 text-court-700 text-xs font-extrabold px-3 py-1.5 rounded-full">
