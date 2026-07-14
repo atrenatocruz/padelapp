@@ -405,6 +405,12 @@ export default function GameDetails() {
   const isUserJoined = participants.some(p => p.user_id === user.id || p.partner_id === user.id)
   const canJoin = game?.status === 'open' && peopleCount < capacity && !isUserJoined
   const mixStarted = game?.status === 'in_progress' || game?.status === 'finished'
+  // A full game counts as closed even if the stored status lagged behind
+  // (e.g. players who joined before the auto-close trigger existed)
+  const isFull = peopleCount >= capacity
+  const showClosed = !mixStarted && game?.status !== 'completed' &&
+    (game?.status === 'closed' || (game?.status === 'open' && isFull))
+  const canStart = isAdmin && !mixStarted && showClosed
   const rounds = [...new Set(matches.map(m => m.round_number))].sort((a, b) => a - b)
   const tctStandings = !isSobeDesce && teams.length ? standings(teams, matches) : []
 
@@ -491,7 +497,7 @@ export default function GameDetails() {
             players={people.map(p => ({ id: p.id, name: p.name }))}
             max={capacity}
           />
-          {game.status === 'closed' && (
+          {showClosed && (
             <span className="inline-flex items-center gap-1.5 bg-ok/10 text-ok text-xs font-extrabold px-3 py-1.5 rounded-full">
               <Lock size={14} /> Mix fechado — campo reservado
             </span>
@@ -529,7 +535,7 @@ export default function GameDetails() {
       )}
 
       {/* Começar o jogo (admin, mix cheio) */}
-      {isAdmin && game.status === 'closed' && !mixStarted && (
+      {canStart && (
         <PrimaryButton onClick={handleStartMix} disabled={busy} className="w-full">
           <Play size={19} />
           {busy ? 'A sortear…' : 'Começar o jogo'}

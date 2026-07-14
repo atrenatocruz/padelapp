@@ -169,7 +169,10 @@ export function MixCard({ game, joined = false }) {
 
   // Guests count as players but their (default) level shouldn't skew the range
   const range = levelRange(players.filter(p => !p.isGuest).map(p => p.level))
-  const isClosed = game.status === 'closed'
+  // A full game reads as closed even if the stored status lagged behind
+  const capacity = game.max_players || (game.num_courts || 1) * 4
+  const isFull = players.length >= capacity
+  const isClosed = game.status === 'closed' || (game.status === 'open' && isFull)
   const isLive = game.status === 'in_progress'
   const isDone = game.status === 'completed' || game.status === 'finished'
 
@@ -230,7 +233,7 @@ export function MixCard({ game, joined = false }) {
           <PlayerAvatarRow players={players} max={game.max_players} size="sm" />
           {range && <LevelBadge range={range} />}
         </div>
-        {game.status === 'open' && !joined && (
+        {game.status === 'open' && !joined && !isFull && (
           <span className="inline-flex items-center gap-0.5 text-court-600 text-sm font-extrabold">
             Jogar <ChevronRight size={17} />
           </span>
