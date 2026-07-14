@@ -72,6 +72,7 @@ export default function Admin() {
         *,
         player_stats (*)
       `)
+      .eq('is_guest', false)
       .order('name')
 
     if (error) {

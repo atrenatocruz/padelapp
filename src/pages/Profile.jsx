@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react'
-import { User, Award, Trophy, Target, Flame } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { User, Award, Trophy, Target, Flame, LogOut } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
-import { PrimaryButton, LevelBadge } from '../components/ui'
+import { PrimaryButton, LevelBadge, GuestBadge } from '../components/ui'
 
 export default function Profile() {
-  const { profile, updateProfile } = useAuth()
+  const { profile, updateProfile, isGuest, signOut } = useAuth()
+  const navigate = useNavigate()
   const [editing, setEditing] = useState(false)
   const [name, setName] = useState(profile?.name || '')
   const [phone, setPhone] = useState(profile?.phone || '')
@@ -23,7 +25,9 @@ export default function Profile() {
       setLevel(profile.level)
       setBirthday(profile.birthday || '')
       setGender(profile.gender || '')
-      loadStats()
+      if (!profile.is_guest) {
+        loadStats()
+      }
     }
   }, [profile])
 
@@ -67,6 +71,48 @@ export default function Profile() {
   const inputLabel = 'block text-sm font-extrabold text-court-900 mb-2'
   const fieldLabel = 'text-[11px] font-extrabold uppercase tracking-widest text-muted'
   const fieldValue = 'text-base text-court-900 mt-0.5'
+
+  // Guest view: header only — name + (Convidado) + Sair. No stats, no settings.
+  if (isGuest) {
+    return (
+      <div className="space-y-4">
+        <div className="card bg-court-900 text-center relative overflow-hidden">
+          <svg
+            viewBox="0 0 400 160"
+            className="absolute inset-0 w-full h-full text-white/[0.05]"
+            preserveAspectRatio="xMidYMid slice"
+            aria-hidden="true"
+          >
+            <rect x="60" y="-60" width="280" height="260" rx="16" stroke="currentColor" strokeWidth="3" fill="none" />
+            <line x1="200" y1="-60" x2="200" y2="200" stroke="currentColor" strokeWidth="3" />
+          </svg>
+          <div className="relative py-2">
+            <div className="w-20 h-20 bg-volt-400 text-court-900 rounded-full flex items-center justify-center mx-auto mb-3 text-3xl font-extrabold">
+              {profile?.name?.charAt(0).toUpperCase()}
+            </div>
+            <h2 className="text-2xl text-white">
+              {profile?.name} <span className="text-court-200 font-normal">(Convidado)</span>
+            </h2>
+            <div className="mt-2.5">
+              <GuestBadge size="md" />
+            </div>
+          </div>
+        </div>
+
+        <PrimaryButton
+          variant="ghost"
+          onClick={async () => {
+            await signOut()
+            navigate('/login')
+          }}
+          className="w-full"
+        >
+          <LogOut size={19} />
+          Sair
+        </PrimaryButton>
+      </div>
+    )
+  }
 
   const statTiles = stats && stats.games_played > 0 ? [
     { icon: Target, value: stats.games_played, label: 'Jogos', cls: 'text-court-600' },

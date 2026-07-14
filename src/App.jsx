@@ -30,6 +30,32 @@ const ProtectedRoute = ({ children }) => {
   return children
 }
 
+// Members-only route: guests are redirected to Jogos
+const MemberRoute = ({ children }) => {
+  const { user, profile, loading } = useAuth()
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-apple-gray">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-apple-blue mx-auto mb-4"></div>
+          <p className="text-gray-600">A carregar...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!user) {
+    return <Navigate to="/login" />
+  }
+
+  if (profile?.is_guest) {
+    return <Navigate to="/" />
+  }
+
+  return children
+}
+
 const AdminRoute = ({ children }) => {
   const { profile, loading } = useAuth()
 
@@ -81,11 +107,11 @@ function AppRoutes() {
       <Route
         path="/rankings"
         element={
-          <ProtectedRoute>
+          <MemberRoute>
             <Layout>
               <Rankings />
             </Layout>
-          </ProtectedRoute>
+          </MemberRoute>
         }
       />
       <Route

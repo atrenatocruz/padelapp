@@ -38,7 +38,7 @@ export default function Home() {
             id,
             user_id,
             status,
-            user:profiles!participants_user_id_fkey (name, level)
+            user:profiles!participants_user_id_fkey (name, level, is_guest)
           )
         `)
         .order('date', { ascending: true })

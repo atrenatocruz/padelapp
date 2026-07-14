@@ -19,6 +19,7 @@ export default function Rankings() {
       const { data, error } = await supabase
         .from('profiles')
         .select('id, name, level')
+        .eq('is_guest', false)
         .order('name')
 
       if (error) throw error
@@ -34,8 +35,9 @@ export default function Rankings() {
         .from('player_stats')
         .select(`
           *,
-          user:profiles!player_stats_user_id_fkey (name, level)
+          user:profiles!player_stats_user_id_fkey!inner (name, level, is_guest)
         `)
+        .eq('user.is_guest', false)
         .order('games_won', { ascending: false })
         .order('rating', { ascending: false })
 

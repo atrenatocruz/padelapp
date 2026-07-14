@@ -13,6 +13,7 @@ CREATE TABLE profiles (
   phone TEXT,
   level TEXT DEFAULT 'iniciante', -- iniciante, intermédio, avançado (ou N2-N6)
   is_admin BOOLEAN DEFAULT FALSE,
+  is_guest BOOLEAN NOT NULL DEFAULT FALSE, -- anonymous guest players
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW())
 );
 
@@ -138,6 +139,10 @@ CREATE POLICY "Users can update their participation"
   ON participants FOR UPDATE
   USING (auth.uid() = user_id);
 
+CREATE POLICY "Users can leave games"
+  ON participants FOR DELETE
+  USING (auth.uid() = user_id);
+
 -- Results: Anyone can view, participants and admins can submit
 ALTER TABLE results ENABLE ROW LEVEL SECURITY;
 
@@ -148,7 +153,9 @@ CREATE POLICY "Results are viewable by everyone"
 CREATE POLICY "Participants and admins can submit results"
   ON results FOR INSERT
   WITH CHECK (
-    auth.uid() = submitted_by AND (
+    auth.uid() = submitted_by
+    AND COALESCE((auth.jwt()->>'is_anonymous')::boolean, FALSE) = FALSE
+    AND (
       EXISTS (
         SELECT 1 FROM participants
         WHERE participants.game_id = game_id AND participants.user_id = auth.uid()
@@ -163,9 +170,12 @@ CREATE POLICY "Participants and admins can submit results"
 -- Player stats: Everyone can view, system updates
 ALTER TABLE player_stats ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Stats are viewable by everyone"
+CREATE POLICY "Stats viewable by registered users"
   ON player_stats FOR SELECT
-  USING (true);
+  USING (
+    auth.uid() IS NOT NULL
+    AND COALESCE((auth.jwt()->>'is_anonymous')::boolean, FALSE) = FALSE
+  );
 
 -- Settings: Everyone can view, only admins can update
 ALTER TABLE settings ENABLE ROW LEVEL SECURITY;
@@ -204,60 +214,42 @@ FOR EACH ROW
 EXECUTE FUNCTION check_game_full();
 
 -- Function to update player stats after result submission
+-- Guests (is_guest = true) participate in games but never accrue stats.
 CREATE OR REPLACE FUNCTION update_player_stats()
 RETURNS TRIGGER AS $$
+DECLARE
+  p RECORD;
 BEGIN
-  -- Update stats for all 4 players
-  -- Team 1 players
-  INSERT INTO player_stats (user_id, games_played, games_won, total_points_scored, total_points_conceded)
-  VALUES (NEW.team1_player1_id, 1, 
-          CASE WHEN NEW.team1_score > NEW.team2_score THEN 1 ELSE 0 END,
-          NEW.team1_score, NEW.team2_score)
-  ON CONFLICT (user_id) DO UPDATE
-  SET games_played = player_stats.games_played + 1,
-      games_won = player_stats.games_won + CASE WHEN NEW.team1_score > NEW.team2_score THEN 1 ELSE 0 END,
-      total_points_scored = player_stats.total_points_scored + NEW.team1_score,
-      total_points_conceded = player_stats.total_points_conceded + NEW.team2_score,
-      updated_at = NOW();
-      
-  INSERT INTO player_stats (user_id, games_played, games_won, total_points_scored, total_points_conceded)
-  VALUES (NEW.team1_player2_id, 1,
-          CASE WHEN NEW.team1_score > NEW.team2_score THEN 1 ELSE 0 END,
-          NEW.team1_score, NEW.team2_score)
-  ON CONFLICT (user_id) DO UPDATE
-  SET games_played = player_stats.games_played + 1,
-      games_won = player_stats.games_won + CASE WHEN NEW.team1_score > NEW.team2_score THEN 1 ELSE 0 END,
-      total_points_scored = player_stats.total_points_scored + NEW.team1_score,
-      total_points_conceded = player_stats.total_points_conceded + NEW.team2_score,
-      updated_at = NOW();
-  
-  -- Team 2 players
-  INSERT INTO player_stats (user_id, games_played, games_won, total_points_scored, total_points_conceded)
-  VALUES (NEW.team2_player1_id, 1,
-          CASE WHEN NEW.team2_score > NEW.team1_score THEN 1 ELSE 0 END,
-          NEW.team2_score, NEW.team1_score)
-  ON CONFLICT (user_id) DO UPDATE
-  SET games_played = player_stats.games_played + 1,
-      games_won = player_stats.games_won + CASE WHEN NEW.team2_score > NEW.team1_score THEN 1 ELSE 0 END,
-      total_points_scored = player_stats.total_points_scored + NEW.team2_score,
-      total_points_conceded = player_stats.total_points_conceded + NEW.team1_score,
-      updated_at = NOW();
-      
-  INSERT INTO player_stats (user_id, games_played, games_won, total_points_scored, total_points_conceded)
-  VALUES (NEW.team2_player2_id, 1,
-          CASE WHEN NEW.team2_score > NEW.team1_score THEN 1 ELSE 0 END,
-          NEW.team2_score, NEW.team1_score)
-  ON CONFLICT (user_id) DO UPDATE
-  SET games_played = player_stats.games_played + 1,
-      games_won = player_stats.games_won + CASE WHEN NEW.team2_score > NEW.team1_score THEN 1 ELSE 0 END,
-      total_points_scored = player_stats.total_points_scored + NEW.team2_score,
-      total_points_conceded = player_stats.total_points_conceded + NEW.team1_score,
-      updated_at = NOW();
-  
+  FOR p IN
+    SELECT * FROM (VALUES
+      (NEW.team1_player1_id, NEW.team1_score, NEW.team2_score),
+      (NEW.team1_player2_id, NEW.team1_score, NEW.team2_score),
+      (NEW.team2_player1_id, NEW.team2_score, NEW.team1_score),
+      (NEW.team2_player2_id, NEW.team2_score, NEW.team1_score)
+    ) AS t(player_id, scored, conceded)
+  LOOP
+    IF p.player_id IS NOT NULL AND NOT EXISTS (
+      SELECT 1 FROM profiles WHERE id = p.player_id AND is_guest
+    ) THEN
+      INSERT INTO player_stats (user_id, games_played, games_won, total_points_scored, total_points_conceded)
+      VALUES (
+        p.player_id, 1,
+        CASE WHEN p.scored > p.conceded THEN 1 ELSE 0 END,
+        p.scored, p.conceded
+      )
+      ON CONFLICT (user_id) DO UPDATE
+      SET games_played = player_stats.games_played + 1,
+          games_won = player_stats.games_won + CASE WHEN p.scored > p.conceded THEN 1 ELSE 0 END,
+          total_points_scored = player_stats.total_points_scored + p.scored,
+          total_points_conceded = player_stats.total_points_conceded + p.conceded,
+          updated_at = NOW();
+    END IF;
+  END LOOP;
+
   -- Mark game as completed
   UPDATE games SET status = 'completed', updated_at = NOW()
   WHERE id = NEW.game_id;
-  
+
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -271,16 +263,17 @@ EXECUTE FUNCTION update_player_stats();
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.profiles (id, name, email, birthday, gender, phone, level, is_admin)
+  INSERT INTO public.profiles (id, name, email, birthday, gender, phone, level, is_admin, is_guest)
   VALUES (
     NEW.id,
     COALESCE(NEW.raw_user_meta_data->>'name', 'Novo Utilizador'),
-    NEW.email,
+    COALESCE(NEW.email, ''), -- anonymous (guest) users have no email
     COALESCE((NEW.raw_user_meta_data->>'birthday')::date, NULL),
     COALESCE(NEW.raw_user_meta_data->>'gender', NULL),
     COALESCE(NEW.phone, NEW.raw_user_meta_data->>'phone'),
     'iniciante',
-    FALSE
+    FALSE,
+    COALESCE(NEW.is_anonymous, FALSE)
   );
   RETURN NEW;
 END;

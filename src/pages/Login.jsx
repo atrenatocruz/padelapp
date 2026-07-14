@@ -9,11 +9,41 @@ export default function Login() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const navigate = useNavigate()
-  const { signUp, signIn, signInAsAdmin } = useAuth()
+  const { signUp, signIn, signInAsGuest, signInAsAdmin } = useAuth()
 
   const handleAdminBypass = () => {
     signInAsAdmin()
     navigate('/')
+  }
+
+  // Guest entry state
+  const [guestMode, setGuestMode] = useState(false)
+  const [guestName, setGuestName] = useState('')
+  const [guestError, setGuestError] = useState('')
+  const [guestLoading, setGuestLoading] = useState(false)
+
+  const handleGuestEntry = async (e) => {
+    e.preventDefault()
+    const name = guestName.trim()
+
+    if (name.length < 2 || name.length > 30) {
+      setGuestError('O nome deve ter entre 2 e 30 caracteres')
+      return
+    }
+
+    setGuestLoading(true)
+    setGuestError('')
+
+    try {
+      const { error } = await signInAsGuest(name)
+      if (error) throw error
+      navigate('/')
+    } catch (err) {
+      console.error('Guest sign-in error:', err)
+      setGuestError('Não foi possível entrar como convidado. Tenta novamente.')
+    } finally {
+      setGuestLoading(false)
+    }
   }
 
   // Login form state
@@ -272,6 +302,65 @@ export default function Login() {
               </PrimaryButton>
             </form>
           )}
+
+          {/* Guest entry — clearly secondary */}
+          <div className="mt-6">
+            {!guestMode ? (
+              <button
+                onClick={() => {
+                  setGuestMode(true)
+                  setGuestError('')
+                }}
+                className="w-full py-3 px-4 rounded-ctrl font-extrabold text-sm text-muted border border-line bg-surface hover:text-court-900 hover:bg-court-50 transition-all duration-fast min-h-[48px]"
+              >
+                Entrar como convidado
+              </button>
+            ) : (
+              <form onSubmit={handleGuestEntry} className="card space-y-4 animate-fade-up">
+                <div>
+                  <label className={inputLabel}>O teu nome</label>
+                  <input
+                    type="text"
+                    value={guestName}
+                    onChange={(e) => setGuestName(e.target.value)}
+                    className="input-field"
+                    placeholder="João"
+                    minLength={2}
+                    maxLength={30}
+                    autoFocus
+                    required
+                  />
+                  <p className="text-xs text-muted mt-1.5">
+                    Entras só com o nome — sem conta, sem email.
+                  </p>
+                </div>
+
+                {guestError && (
+                  <div className="bg-danger/10 text-danger px-4 py-3 rounded-ctrl text-sm font-extrabold">
+                    {guestError}
+                  </div>
+                )}
+
+                <div className="flex gap-3">
+                  <PrimaryButton type="submit" disabled={guestLoading} className="flex-1">
+                    {guestLoading ? 'A entrar…' : 'Continuar'}
+                  </PrimaryButton>
+                  <PrimaryButton
+                    type="button"
+                    variant="ghost"
+                    onClick={() => {
+                      setGuestMode(false)
+                      setGuestName('')
+                      setGuestError('')
+                    }}
+                    className="flex-1"
+                  >
+                    Cancelar
+                  </PrimaryButton>
+                </div>
+              </form>
+            )}
+          </div>
 
           {import.meta.env.DEV && (
             <button

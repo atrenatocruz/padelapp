@@ -24,11 +24,17 @@ export default function Layout({ children }) {
     navigate('/login')
   }
 
-  const navItems = [
-    { path: '/', icon: Home, label: 'Jogos' },
-    { path: '/rankings', icon: Trophy, label: 'Ranking' },
-    { path: '/perfil', icon: User, label: 'Perfil' },
-  ]
+  // Guests only see Jogos + Perfil
+  const navItems = profile?.is_guest
+    ? [
+        { path: '/', icon: Home, label: 'Jogos' },
+        { path: '/perfil', icon: User, label: 'Perfil' },
+      ]
+    : [
+        { path: '/', icon: Home, label: 'Jogos' },
+        { path: '/rankings', icon: Trophy, label: 'Ranking' },
+        { path: '/perfil', icon: User, label: 'Perfil' },
+      ]
 
   if (profile?.is_admin) {
     navItems.push({ path: '/admin', icon: Settings, label: 'Admin' })
@@ -44,7 +50,7 @@ export default function Layout({ children }) {
           </Link>
 
           <div className="flex items-center gap-1">
-            {profile?.level && (
+            {profile?.level && !profile?.is_guest && (
               <Link to="/perfil" title="O teu nível" className="mr-2">
                 <LevelBadge level={profile.level} me />
               </Link>

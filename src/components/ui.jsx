@@ -78,6 +78,24 @@ export function LevelBadge({ level, range, me = false, size = 'sm' }) {
   )
 }
 
+/* ─── GuestBadge ─────────────────────────────────────────────────────────
+   Marks non-regular players inside game participant lists. */
+export function GuestBadge({ size = 'sm' }) {
+  const sizes = {
+    sm: 'text-[11px] px-2 py-0.5',
+    md: 'text-sm px-3 py-1',
+  }
+  return (
+    <span
+      title="Jogador convidado"
+      className={`inline-flex items-center rounded-full font-extrabold tracking-wide uppercase
+                  border border-dashed border-court-200 bg-sand text-muted ${sizes[size]}`}
+    >
+      Convidado
+    </span>
+  )
+}
+
 /* ─── PlayerAvatarRow ────────────────────────────────────────────────────
    Filled initials + dashed empty slots + count. Slots visible at a glance. */
 export function PlayerAvatarRow({ players = [], max = 4, size = 'md' }) {
@@ -143,9 +161,10 @@ export function EmptyState({ icon: Icon, title, subtitle, action }) {
 export function MixCard({ game, joined = false }) {
   const players = (game.participants || [])
     .filter(p => p.status === 'confirmed')
-    .map(p => ({ id: p.user_id, name: p.user?.name, level: p.user?.level }))
+    .map(p => ({ id: p.user_id, name: p.user?.name, level: p.user?.level, isGuest: p.user?.is_guest }))
 
-  const range = levelRange(players.map(p => p.level))
+  // Guests count as players but their (default) level shouldn't skew the range
+  const range = levelRange(players.filter(p => !p.isGuest).map(p => p.level))
   const isClosed = game.status === 'closed'
   const isDone = game.status === 'completed'
 

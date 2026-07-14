@@ -3,12 +3,12 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { Calendar, MapPin, ArrowLeft, UserPlus, User, Check, Lock, Trophy } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
-import { PrimaryButton, LevelBadge, PlayerAvatarRow, EmptyState } from '../components/ui'
+import { PrimaryButton, LevelBadge, GuestBadge, PlayerAvatarRow, EmptyState } from '../components/ui'
 
 export default function GameDetails() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { user, profile } = useAuth()
+  const { user, profile, isGuest } = useAuth()
   const [game, setGame] = useState(null)
   const [participants, setParticipants] = useState([])
   const [loading, setLoading] = useState(true)
@@ -56,8 +56,8 @@ export default function GameDetails() {
         .from('participants')
         .select(`
           *,
-          user:profiles!participants_user_id_fkey (id, name, level),
-          partner:profiles!participants_partner_id_fkey (id, name, level)
+          user:profiles!participants_user_id_fkey (id, name, level, is_guest),
+          partner:profiles!participants_partner_id_fkey (id, name, level, is_guest)
         `)
         .eq('game_id', id)
         .eq('status', 'confirmed')
@@ -75,9 +75,11 @@ export default function GameDetails() {
 
   const loadAllUsers = async () => {
     try {
+      // Partner picker is a global player list — guests never appear in it
       const { data, error } = await supabase
         .from('profiles')
         .select('id, name')
+        .eq('is_guest', false)
         .neq('id', user.id)
         .order('name')
 
@@ -217,7 +219,7 @@ export default function GameDetails() {
 
   const isUserJoined = participants.some(p => p.user_id === user.id)
   const canJoin = game?.status === 'open' && participants.length < 4 && !isUserJoined
-  const canSubmitResult = game?.status === 'closed' && isUserJoined && !game?.results?.length
+  const canSubmitResult = game?.status === 'closed' && isUserJoined && !game?.results?.length && !isGuest
 
   if (loading) {
     return (
@@ -342,7 +344,9 @@ export default function GameDetails() {
                     )}
                   </p>
                 </div>
-                <LevelBadge level={participant.user?.level} />
+                {participant.user?.is_guest
+                  ? <GuestBadge />
+                  : <LevelBadge level={participant.user?.level} />}
               </div>
             ))}
           </div>
@@ -367,15 +371,18 @@ export default function GameDetails() {
               <User size={19} />
               {joining ? 'A inscrever…' : 'Entrar sozinho'}
             </PrimaryButton>
-            <PrimaryButton
-              variant="ghost"
-              onClick={() => setJoinMode('partner')}
-              disabled={joining}
-              className="w-full"
-            >
-              <UserPlus size={19} />
-              Entrar com parceiro
-            </PrimaryButton>
+            {/* Guests join alone only — the partner picker is a member list */}
+            {!isGuest && (
+              <PrimaryButton
+                variant="ghost"
+                onClick={() => setJoinMode('partner')}
+                disabled={joining}
+                className="w-full"
+              >
+                <UserPlus size={19} />
+                Entrar com parceiro
+              </PrimaryButton>
+            )}
           </>
         )}
 

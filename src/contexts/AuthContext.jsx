@@ -16,6 +16,7 @@ const MOCK_ADMIN_PROFILE = {
   gender: 'masculino',
   level: 'avançado',
   is_admin: true,
+  is_guest: false,
 }
 
 export const useAuth = () => {
@@ -64,7 +65,7 @@ export const AuthProvider = ({ children }) => {
     return () => subscription.unsubscribe()
   }, [])
 
-  const loadProfile = async (userId) => {
+  const loadProfile = async (userId, retried = false) => {
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -72,7 +73,14 @@ export const AuthProvider = ({ children }) => {
         .eq('id', userId)
         .single()
 
-      if (error) throw error
+      if (error) {
+        // Right after signup the profile trigger may not have committed yet — retry once.
+        if (error.code === 'PGRST116' && !retried) {
+          setTimeout(() => loadProfile(userId, true), 600)
+          return
+        }
+        throw error
+      }
       setProfile(data)
     } catch (error) {
       console.error('Error loading profile:', error)
@@ -97,6 +105,17 @@ export const AuthProvider = ({ children }) => {
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
+    })
+    return { data, error }
+  }
+
+  // Guest entry: anonymous Supabase session + auto-created profile
+  // with is_guest = true (set by the handle_new_user trigger).
+  const signInAsGuest = async (name) => {
+    const { data, error } = await supabase.auth.signInAnonymously({
+      options: {
+        data: { name },
+      }
     })
     return { data, error }
   }
@@ -146,8 +165,10 @@ export const AuthProvider = ({ children }) => {
     user,
     profile,
     loading,
+    isGuest: profile?.is_guest === true,
     signUp,
     signIn,
+    signInAsGuest,
     signInAsAdmin,
     signOut,
     updateProfile,
