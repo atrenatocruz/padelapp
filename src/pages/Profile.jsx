@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
-import { User, Award, Trophy, Target } from 'lucide-react'
+import { User, Award, Trophy, Target, Flame } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
+import { PrimaryButton, LevelBadge } from '../components/ui'
 
 export default function Profile() {
   const { profile, updateProfile } = useAuth()
@@ -13,6 +14,7 @@ export default function Profile() {
   const [gender, setGender] = useState(profile?.gender || '')
   const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [saved, setSaved] = useState(false)
 
   useEffect(() => {
     if (profile) {
@@ -48,7 +50,8 @@ export default function Profile() {
       const { error } = await updateProfile({ name, phone, level, birthday, gender })
       if (error) throw error
       setEditing(false)
-      alert('Perfil atualizado com sucesso!')
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
     } catch (error) {
       console.error('Error updating profile:', error)
       alert('Erro ao atualizar perfil')
@@ -61,63 +64,71 @@ export default function Profile() {
     ? ((stats.games_won / stats.games_played) * 100).toFixed(1)
     : 0
 
+  const inputLabel = 'block text-sm font-extrabold text-court-900 mb-2'
+  const fieldLabel = 'text-[11px] font-extrabold uppercase tracking-widest text-muted'
+  const fieldValue = 'text-base text-court-900 mt-0.5'
+
+  const statTiles = stats && stats.games_played > 0 ? [
+    { icon: Target, value: stats.games_played, label: 'Jogos', cls: 'text-court-600' },
+    { icon: Trophy, value: stats.games_won, label: 'Vitórias', cls: 'text-volt-500' },
+    { icon: Award, value: `${winRate}%`, label: 'Taxa de vitória', cls: 'text-ok' },
+    { icon: Flame, value: stats.total_points_scored, label: 'Pontos marcados', cls: 'text-court-600' },
+  ] : null
+
   return (
-    <div className="space-y-6">
-      <div className="text-center">
-        <div className="w-24 h-24 bg-apple-blue text-white rounded-full flex items-center justify-center mx-auto mb-4 text-4xl font-bold">
-          {profile?.name?.charAt(0).toUpperCase()}
+    <div className="space-y-4">
+      {/* Hero */}
+      <div className="card bg-court-900 text-center relative overflow-hidden">
+        <svg
+          viewBox="0 0 400 160"
+          className="absolute inset-0 w-full h-full text-white/[0.05]"
+          preserveAspectRatio="xMidYMid slice"
+          aria-hidden="true"
+        >
+          <rect x="60" y="-60" width="280" height="260" rx="16" stroke="currentColor" strokeWidth="3" fill="none" />
+          <line x1="200" y1="-60" x2="200" y2="200" stroke="currentColor" strokeWidth="3" />
+        </svg>
+        <div className="relative py-2">
+          <div className="w-20 h-20 bg-volt-400 text-court-900 rounded-full flex items-center justify-center mx-auto mb-3 text-3xl font-extrabold">
+            {profile?.name?.charAt(0).toUpperCase()}
+          </div>
+          <h2 className="text-2xl text-white">{profile?.name}</h2>
+          <div className="mt-2.5">
+            <LevelBadge level={profile?.level} me size="md" />
+          </div>
         </div>
-        <h2 className="text-3xl font-bold text-apple-darkgray">{profile?.name}</h2>
-        <p className="text-gray-600 mt-1">Nível: {profile?.level}</p>
       </div>
 
-      {/* Stats Card */}
-      {stats && stats.games_played > 0 && (
-        <div className="card">
-          <h3 className="text-xl font-semibold text-apple-darkgray mb-4 flex items-center gap-2">
-            <Trophy size={24} className="text-yellow-500" />
-            Estatísticas
-          </h3>
-          
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-gray-50 rounded-xl p-4 text-center">
-              <Target size={24} className="mx-auto text-apple-blue mb-2" />
-              <p className="text-2xl font-bold text-apple-darkgray">{stats.games_played}</p>
-              <p className="text-sm text-gray-600">Jogos</p>
-            </div>
-            
-            <div className="bg-gray-50 rounded-xl p-4 text-center">
-              <Trophy size={24} className="mx-auto text-yellow-500 mb-2" />
-              <p className="text-2xl font-bold text-apple-darkgray">{stats.games_won}</p>
-              <p className="text-sm text-gray-600">Vitórias</p>
-            </div>
-            
-            <div className="bg-gray-50 rounded-xl p-4 text-center">
-              <Award size={24} className="mx-auto text-green-500 mb-2" />
-              <p className="text-2xl font-bold text-green-600">{winRate}%</p>
-              <p className="text-sm text-gray-600">Taxa de vitória</p>
-            </div>
-            
-            <div className="bg-gray-50 rounded-xl p-4 text-center">
-              <div className="text-2xl mb-2">🎯</div>
-              <p className="text-2xl font-bold text-apple-darkgray">{stats.total_points_scored}</p>
-              <p className="text-sm text-gray-600">Pontos marcados</p>
-            </div>
-          </div>
+      {saved && (
+        <div className="bg-ok/10 text-ok px-4 py-3 rounded-ctrl text-sm font-extrabold animate-fade-up">
+          ✓ Perfil atualizado
         </div>
       )}
 
-      {/* Profile Info Card */}
+      {/* Stats */}
+      {statTiles && (
+        <div className="grid grid-cols-2 gap-3">
+          {statTiles.map(({ icon: Icon, value, label, cls }) => (
+            <div key={label} className="card text-center py-5">
+              <Icon size={21} className={`mx-auto mb-1.5 ${cls}`} />
+              <p className="text-2xl font-extrabold text-court-900 tabular-nums">{value}</p>
+              <p className="text-xs text-muted">{label}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Personal info */}
       <div className="card">
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-xl font-semibold text-apple-darkgray flex items-center gap-2">
-            <User size={24} />
-            Informação Pessoal
+        <div className="flex items-center justify-between mb-5">
+          <h3 className="text-lg text-court-900 flex items-center gap-2">
+            <User size={20} className="text-court-600" />
+            Informação pessoal
           </h3>
           {!editing && (
             <button
               onClick={() => setEditing(true)}
-              className="text-apple-blue font-semibold hover:underline"
+              className="text-court-600 font-extrabold text-sm min-h-[44px] px-2"
             >
               Editar
             </button>
@@ -125,11 +136,9 @@ export default function Profile() {
         </div>
 
         {editing ? (
-          <form onSubmit={handleSave} className="space-y-4">
+          <form onSubmit={handleSave} className="space-y-4 animate-fade-up">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Nome
-              </label>
+              <label className={inputLabel}>Nome</label>
               <input
                 type="text"
                 value={name}
@@ -140,9 +149,7 @@ export default function Profile() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Data de nascimento
-              </label>
+              <label className={inputLabel}>Data de nascimento</label>
               <input
                 type="date"
                 value={birthday}
@@ -152,9 +159,7 @@ export default function Profile() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Género
-              </label>
+              <label className={inputLabel}>Género</label>
               <select
                 value={gender}
                 onChange={(e) => setGender(e.target.value)}
@@ -167,9 +172,7 @@ export default function Profile() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Telemóvel
-              </label>
+              <label className={inputLabel}>Telemóvel</label>
               <input
                 type="tel"
                 value={phone}
@@ -180,9 +183,7 @@ export default function Profile() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Nível de jogo
-              </label>
+              <label className={inputLabel}>Nível de jogo</label>
               <select
                 value={level}
                 onChange={(e) => setLevel(e.target.value)}
@@ -199,16 +200,13 @@ export default function Profile() {
               </select>
             </div>
 
-            <div className="flex gap-3 pt-4">
-              <button
-                type="submit"
-                disabled={loading}
-                className="btn-primary flex-1 disabled:opacity-50"
-              >
-                {loading ? 'A guardar...' : 'Guardar'}
-              </button>
-              <button
+            <div className="flex gap-3 pt-2">
+              <PrimaryButton type="submit" disabled={loading} className="flex-1">
+                {loading ? 'A guardar…' : 'Guardar'}
+              </PrimaryButton>
+              <PrimaryButton
                 type="button"
+                variant="ghost"
                 onClick={() => {
                   setEditing(false)
                   setName(profile.name)
@@ -217,48 +215,46 @@ export default function Profile() {
                   setBirthday(profile.birthday || '')
                   setGender(profile.gender || '')
                 }}
-                className="btn-secondary flex-1"
+                className="flex-1"
               >
                 Cancelar
-              </button>
+              </PrimaryButton>
             </div>
           </form>
         ) : (
           <div className="space-y-4">
             <div>
-              <p className="text-sm text-gray-500">Nome</p>
-              <p className="text-lg text-apple-darkgray font-medium">{profile?.name}</p>
+              <p className={fieldLabel}>Nome</p>
+              <p className={fieldValue}>{profile?.name}</p>
             </div>
-            
+
             <div>
-              <p className="text-sm text-gray-500">Email</p>
-              <p className="text-lg text-apple-darkgray font-medium">{profile?.email}</p>
+              <p className={fieldLabel}>Email</p>
+              <p className={fieldValue}>{profile?.email}</p>
             </div>
-            
+
             <div>
-              <p className="text-sm text-gray-500">Data de nascimento</p>
-              <p className="text-lg text-apple-darkgray font-medium">
+              <p className={fieldLabel}>Data de nascimento</p>
+              <p className={fieldValue}>
                 {profile?.birthday ? new Date(profile.birthday).toLocaleDateString('pt-PT') : 'Não definido'}
               </p>
             </div>
-            
+
             <div>
-              <p className="text-sm text-gray-500">Género</p>
-              <p className="text-lg text-apple-darkgray font-medium">
+              <p className={fieldLabel}>Género</p>
+              <p className={fieldValue}>
                 {profile?.gender ? profile.gender.charAt(0).toUpperCase() + profile.gender.slice(1) : 'Não definido'}
               </p>
             </div>
-            
+
             <div>
-              <p className="text-sm text-gray-500">Telemóvel</p>
-              <p className="text-lg text-apple-darkgray font-medium">
-                {profile?.phone || 'Não definido'}
-              </p>
+              <p className={fieldLabel}>Telemóvel</p>
+              <p className={fieldValue}>{profile?.phone || 'Não definido'}</p>
             </div>
-            
+
             <div>
-              <p className="text-sm text-gray-500">Nível de jogo</p>
-              <p className="text-lg text-apple-darkgray font-medium">{profile?.level}</p>
+              <p className={fieldLabel}>Nível de jogo</p>
+              <p className={fieldValue}>{profile?.level}</p>
             </div>
           </div>
         )}
@@ -266,4 +262,3 @@ export default function Profile() {
     </div>
   )
 }
-

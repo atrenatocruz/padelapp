@@ -441,40 +441,38 @@ export default function Admin() {
 
               {members.map(member => (
                 <div key={member.id} className="card">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-apple-blue text-white rounded-full flex items-center justify-center font-bold text-lg">
-                        {member.name.charAt(0).toUpperCase()}
-                      </div>
-                      <div>
-                        <h3 className="font-semibold text-apple-darkgray">
-                          {member.name}
-                          {member.is_admin && (
-                            <span className="ml-2 text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full">
-                              Admin
-                            </span>
-                          )}
-                        </h3>
-                        <p className="text-sm text-gray-600">
-                          Nível: {member.level} • {member.phone || 'Sem contacto'}
-                        </p>
-                        {member.player_stats?.[0] && (
-                          <p className="text-sm text-gray-500 mt-1">
-                            {member.player_stats[0].games_played} jogos • {member.player_stats[0].games_won} vitórias
-                          </p>
-                        )}
-                      </div>
+                  <div className="flex items-center gap-3.5">
+                    <div className="w-11 h-11 bg-court-600 text-white rounded-full flex items-center justify-center font-extrabold shrink-0">
+                      {member.name.charAt(0).toUpperCase()}
                     </div>
-                    
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-extrabold text-court-900 truncate flex items-center gap-2">
+                        <span className="truncate">{member.name}</span>
+                        {member.is_admin && (
+                          <span className="text-[10px] uppercase tracking-wide bg-volt-400 text-court-900 px-2 py-0.5 rounded-full shrink-0">
+                            Admin
+                          </span>
+                        )}
+                      </h3>
+                      <p className="text-sm text-muted truncate">
+                        Nível: {member.level} • {member.phone || 'Sem contacto'}
+                      </p>
+                      {member.player_stats?.[0] && (
+                        <p className="text-sm text-muted/80 truncate">
+                          {member.player_stats[0].games_played} jogos • {member.player_stats[0].games_won} vitórias
+                        </p>
+                      )}
+                    </div>
+
                     <button
                       onClick={() => handleToggleAdmin(member.id, member.is_admin)}
-                      className={`px-4 py-2 rounded-xl font-medium transition-colors ${
+                      className={`shrink-0 whitespace-nowrap text-sm font-extrabold px-3.5 py-2 min-h-[44px] rounded-full transition-colors duration-fast ${
                         member.is_admin
-                          ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          ? 'bg-danger/10 text-danger hover:bg-danger/15'
+                          : 'bg-court-100 text-court-700 hover:bg-court-200'
                       }`}
                     >
-                      {member.is_admin ? 'Remover admin' : 'Tornar admin'}
+                      {member.is_admin ? 'Remover' : 'Tornar admin'}
                     </button>
                   </div>
                 </div>

@@ -9,11 +9,11 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'robots.txt', 'apple-touch-icon.png'],
       manifest: {
-        name: 'Os Padeleiros',
-        short_name: 'Padeleiros',
+        name: 'padel.app',
+        short_name: 'padel.app',
         description: 'App para gerir jogos de padel do grupo Os Padeleiros',
-        theme_color: '#ffffff',
-        background_color: '#ffffff',
+        theme_color: '#0B2545',
+        background_color: '#F6F7F3',
         display: 'standalone',
         icons: [
           {

@@ -14,6 +14,7 @@ const MOCK_ADMIN_PROFILE = {
   email: 'admin@dev.local',
   name: 'Admin (Dev)',
   gender: 'masculino',
+  level: 'avançado',
   is_admin: true,
 }
 

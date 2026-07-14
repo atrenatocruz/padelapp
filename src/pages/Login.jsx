@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import { PrimaryButton } from '../components/ui'
+import { Wordmark } from '../components/Layout'
 
 export default function Login() {
   const [mode, setMode] = useState('login') // 'login' or 'signup'
@@ -70,13 +72,10 @@ export default function Login() {
 
       if (error) throw error
 
-      // Success - show message and auto-login
-      alert('Conta criada com sucesso! A fazer login...')
-      
       // Auto-login after signup
       const { error: loginError } = await signIn(signupEmail, signupPassword)
       if (loginError) throw loginError
-      
+
       navigate('/')
     } catch (err) {
       setError(err.message || 'Erro ao criar conta')
@@ -85,28 +84,46 @@ export default function Login() {
     }
   }
 
+  const inputLabel = 'block text-sm font-extrabold text-court-900 mb-2'
+
   return (
-    <div className="min-h-screen bg-apple-gray flex items-center justify-center px-4">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-apple-darkgray mb-2">Os Padeleiros</h1>
-          <p className="text-gray-600 text-lg">
+    <div className="min-h-screen bg-court-900 flex flex-col">
+      {/* Hero — court lines + volt ball */}
+      <div className="relative px-6 pt-14 pb-10 text-center overflow-hidden shrink-0">
+        <svg
+          viewBox="0 0 400 200"
+          className="absolute inset-0 w-full h-full text-white/[0.06]"
+          preserveAspectRatio="xMidYMid slice"
+          aria-hidden="true"
+        >
+          <rect x="40" y="-40" width="320" height="280" rx="18" stroke="currentColor" strokeWidth="3" fill="none" />
+          <line x1="200" y1="-40" x2="200" y2="240" stroke="currentColor" strokeWidth="3" />
+          <line x1="40" y1="100" x2="360" y2="100" stroke="currentColor" strokeWidth="3" strokeDasharray="8 10" />
+        </svg>
+        <div className="relative">
+          <h1 className="text-5xl text-white">
+            <Wordmark />
+          </h1>
+          <p className="text-court-200 mt-3">
             {mode === 'login' ? 'Bem-vindo de volta' : 'Cria a tua conta'}
           </p>
         </div>
+      </div>
 
-        <div className="bg-white rounded-3xl shadow-lg p-8">
+      {/* Sheet */}
+      <div className="flex-1 bg-sand rounded-t-[28px] px-5 py-8">
+        <div className="w-full max-w-md mx-auto">
           {/* Tabs */}
-          <div className="flex gap-2 mb-6">
+          <div className="flex gap-2 mb-6 bg-surface rounded-ctrl p-1.5 shadow-card">
             <button
               onClick={() => {
                 setMode('login')
                 setError('')
               }}
-              className={`flex-1 py-3 px-4 rounded-xl font-medium transition-all ${
+              className={`flex-1 py-2.5 px-4 rounded-[8px] font-extrabold text-sm min-h-[44px] transition-all duration-fast ${
                 mode === 'login'
-                  ? 'bg-apple-blue text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  ? 'bg-court-900 text-white'
+                  : 'text-muted hover:text-court-900'
               }`}
             >
               Entrar
@@ -116,10 +133,10 @@ export default function Login() {
                 setMode('signup')
                 setError('')
               }}
-              className={`flex-1 py-3 px-4 rounded-xl font-medium transition-all ${
+              className={`flex-1 py-2.5 px-4 rounded-[8px] font-extrabold text-sm min-h-[44px] transition-all duration-fast ${
                 mode === 'signup'
-                  ? 'bg-apple-blue text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  ? 'bg-court-900 text-white'
+                  : 'text-muted hover:text-court-900'
               }`}
             >
               Criar Conta
@@ -128,11 +145,9 @@ export default function Login() {
 
           {/* Login Form */}
           {mode === 'login' && (
-            <form onSubmit={handleLogin} className="space-y-4">
+            <form onSubmit={handleLogin} className="space-y-4 animate-fade-up">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email
-                </label>
+                <label className={inputLabel}>Email</label>
                 <input
                   type="email"
                   value={loginEmail}
@@ -144,9 +159,7 @@ export default function Login() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Password
-                </label>
+                <label className={inputLabel}>Password</label>
                 <input
                   type="password"
                   value={loginPassword}
@@ -158,28 +171,22 @@ export default function Login() {
               </div>
 
               {error && (
-                <div className="bg-red-50 text-red-600 px-4 py-3 rounded-xl text-sm">
+                <div className="bg-danger/10 text-danger px-4 py-3 rounded-ctrl text-sm font-extrabold">
                   {error}
                 </div>
               )}
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="btn-primary w-full disabled:opacity-50"
-              >
-                {loading ? 'A entrar...' : 'Entrar'}
-              </button>
+              <PrimaryButton type="submit" disabled={loading} className="w-full">
+                {loading ? 'A entrar…' : 'Entrar'}
+              </PrimaryButton>
             </form>
           )}
 
           {/* Signup Form */}
           {mode === 'signup' && (
-            <form onSubmit={handleSignup} className="space-y-4">
+            <form onSubmit={handleSignup} className="space-y-4 animate-fade-up">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Nome completo
-                </label>
+                <label className={inputLabel}>Nome completo</label>
                 <input
                   type="text"
                   value={signupName}
@@ -191,9 +198,7 @@ export default function Login() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email
-                </label>
+                <label className={inputLabel}>Email</label>
                 <input
                   type="email"
                   value={signupEmail}
@@ -205,9 +210,7 @@ export default function Login() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Data de nascimento
-                </label>
+                <label className={inputLabel}>Data de nascimento</label>
                 <input
                   type="date"
                   value={signupBirthday}
@@ -218,25 +221,21 @@ export default function Login() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Género
-                </label>
+                <label className={inputLabel}>Género</label>
                 <select
                   value={signupGender}
                   onChange={(e) => setSignupGender(e.target.value)}
                   className="input-field"
                   required
                 >
-                  <option value="">Seleciona...</option>
+                  <option value="">Seleciona…</option>
                   <option value="masculino">Masculino</option>
                   <option value="feminino">Feminino</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Password
-                </label>
+                <label className={inputLabel}>Password</label>
                 <input
                   type="password"
                   value={signupPassword}
@@ -246,13 +245,11 @@ export default function Login() {
                   minLength={6}
                   required
                 />
-                <p className="text-xs text-gray-500 mt-1">Mínimo 6 caracteres</p>
+                <p className="text-xs text-muted mt-1.5">Mínimo 6 caracteres</p>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Confirmar password
-                </label>
+                <label className={inputLabel}>Confirmar password</label>
                 <input
                   type="password"
                   value={signupConfirmPassword}
@@ -265,40 +262,31 @@ export default function Login() {
               </div>
 
               {error && (
-                <div className="bg-red-50 text-red-600 px-4 py-3 rounded-xl text-sm">
+                <div className="bg-danger/10 text-danger px-4 py-3 rounded-ctrl text-sm font-extrabold">
                   {error}
                 </div>
               )}
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="btn-primary w-full disabled:opacity-50"
-              >
-                {loading ? 'A criar conta...' : 'Criar conta'}
-              </button>
+              <PrimaryButton type="submit" disabled={loading} className="w-full">
+                {loading ? 'A criar conta…' : 'Criar conta'}
+              </PrimaryButton>
             </form>
           )}
-        </div>
 
-        {import.meta.env.DEV && (
-          <div className="mt-4">
+          {import.meta.env.DEV && (
             <button
               onClick={handleAdminBypass}
-              className="w-full py-3 px-4 rounded-xl font-medium border border-dashed border-apple-blue text-apple-blue hover:bg-blue-50 transition-all"
+              className="w-full mt-4 py-3 px-4 rounded-ctrl font-extrabold text-sm border border-dashed border-court-500 text-court-600 hover:bg-court-50 transition-all duration-fast min-h-[48px]"
             >
               🔓 Entrar como Admin (dev)
             </button>
-          </div>
-        )}
+          )}
 
-        <div className="mt-6 text-center">
-          <a
-            href="/instrucoes"
-            className="text-apple-blue hover:underline"
-          >
-            Ver instruções de utilização
-          </a>
+          <div className="mt-8 text-center">
+            <a href="/instrucoes" className="text-court-600 font-extrabold text-sm hover:underline">
+              Ver instruções de utilização
+            </a>
+          </div>
         </div>
       </div>
     </div>

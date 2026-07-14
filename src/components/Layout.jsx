@@ -1,6 +1,18 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Home, Trophy, User, Settings, LogOut, HelpCircle } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
+import { LevelBadge } from './ui'
+
+/* Brand wordmark — the "." in padel.app is the ball */
+export function Wordmark({ className = '' }) {
+  return (
+    <span className={`inline-flex items-baseline font-extrabold tracking-tight ${className}`}>
+      padel
+      <span className="w-[0.32em] h-[0.32em] rounded-full bg-volt-400 mx-[0.08em] self-end mb-[0.09em]" aria-hidden="true" />
+      app
+    </span>
+  )
+}
 
 export default function Layout({ children }) {
   const location = useLocation()
@@ -23,61 +35,81 @@ export default function Layout({ children }) {
   }
 
   return (
-    <div className="min-h-screen bg-apple-gray pb-20">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-apple-darkgray">Os Padeleiros</h1>
-          <div className="flex items-center gap-4">
+    <div className="min-h-screen bg-sand pb-32">
+      {/* Header — dark liquid glass */}
+      <header className="sticky top-0 z-10 bg-court-900/95 backdrop-blur-xl border-b border-white/5 supports-[backdrop-filter]:bg-court-900/85">
+        <div className="max-w-2xl mx-auto px-4 h-16 flex items-center justify-between">
+          <Link to="/" className="text-white text-xl leading-none">
+            <Wordmark />
+          </Link>
+
+          <div className="flex items-center gap-1">
+            {profile?.level && (
+              <Link to="/perfil" title="O teu nível" className="mr-2">
+                <LevelBadge level={profile.level} me />
+              </Link>
+            )}
             <Link
               to="/instrucoes"
-              className="text-gray-600 hover:text-apple-blue transition-colors"
               title="Instruções"
+              className="w-11 h-11 flex items-center justify-center rounded-full text-court-200 hover:text-white hover:bg-white/10 transition-colors duration-fast"
             >
-              <HelpCircle size={24} />
+              <HelpCircle size={21} />
             </Link>
             <button
               onClick={handleSignOut}
-              className="text-gray-600 hover:text-red-500 transition-colors"
               title="Sair"
+              className="w-11 h-11 flex items-center justify-center rounded-full text-court-200 hover:text-white hover:bg-white/10 transition-colors duration-fast"
             >
-              <LogOut size={24} />
+              <LogOut size={21} />
             </button>
           </div>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="max-w-4xl mx-auto px-4 py-6">
+      {/* Main */}
+      <main className="max-w-2xl mx-auto px-4 py-6 animate-fade-up">
         {children}
       </main>
 
-      {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-20">
-        <div className="max-w-4xl mx-auto px-4">
-          <div className="flex items-center justify-around">
-            {navItems.map(({ path, icon: Icon, label }) => {
-              const isActive = location.pathname === path
-              return (
-                <Link
-                  key={path}
-                  to={path}
-                  className={`flex flex-col items-center py-3 px-4 transition-colors ${
-                    isActive
-                      ? 'text-apple-blue'
-                      : 'text-gray-500 hover:text-apple-darkgray'
+      {/* Nav — floating dynamic island, liquid glass */}
+      <nav
+        className="fixed inset-x-0 z-20 flex justify-center pointer-events-none px-4"
+        style={{ bottom: 'calc(1rem + env(safe-area-inset-bottom))' }}
+      >
+        <div className="pointer-events-auto flex items-center gap-1 p-1.5 rounded-full
+                        bg-court-900/95 supports-[backdrop-filter]:bg-court-900/90 backdrop-blur-xl
+                        shadow-[0_8px_32px_rgba(11,37,69,0.35)]
+                        ring-1 ring-white/10">
+          {navItems.map(({ path, icon: Icon, label }) => {
+            const isActive = location.pathname === path
+            return (
+              <Link
+                key={path}
+                to={path}
+                aria-current={isActive ? 'page' : undefined}
+                aria-label={label}
+                className={`flex items-center justify-center gap-1.5 h-12 rounded-full
+                            transition-all duration-base ${
+                  isActive
+                    ? 'bg-white/15 text-volt-400 px-4'
+                    : 'text-court-200 hover:text-white w-12'
+                }`}
+              >
+                <Icon size={21} strokeWidth={isActive ? 2.5 : 2} className="shrink-0" />
+                {/* label morphs in on the active item — island style */}
+                <span
+                  className={`text-xs font-extrabold whitespace-nowrap overflow-hidden transition-all duration-base ${
+                    isActive ? 'max-w-[80px] opacity-100' : 'max-w-0 opacity-0'
                   }`}
                 >
-                  <Icon size={24} />
-                  <span className="text-xs mt-1 font-medium">{label}</span>
-                </Link>
-              )
-            })}
-          </div>
+                  {label}
+                </span>
+              </Link>
+            )
+          })}
         </div>
       </nav>
     </div>
   )
 }
-
-

@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { ArrowLeft, HelpCircle, Users, Calendar, Trophy, Settings } from 'lucide-react'
+import { Wordmark } from '../components/Layout'
 
 export default function Instructions() {
   return (
@@ -19,7 +20,7 @@ export default function Instructions() {
         <div className="text-center mb-8">
           <HelpCircle size={48} className="mx-auto text-apple-blue mb-4" />
           <h2 className="text-3xl font-bold text-apple-darkgray mb-2">
-            Como usar a app "Os Padeleiros"
+            Como usar a <Wordmark />
           </h2>
           <p className="text-gray-600">Instruções rápidas para começar</p>
         </div>
