@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://os-padeleiros.vercel.app/sitemap.xml
+
+
