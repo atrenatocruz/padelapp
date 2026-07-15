@@ -277,7 +277,8 @@ export default function Admin() {
         .from('settings')
         .update({
           robot_contact: settings.robot_contact,
-          group_name: settings.group_name
+          group_name: settings.group_name,
+          points_rules: settings.points_rules
         })
         .eq('id', settings.id)
 
@@ -649,6 +650,74 @@ export default function Admin() {
                   </label>
                   <div className="border-2 border-dashed border-gray-300 rounded-2xl p-8 text-center text-gray-500">
                     Funcionalidade de upload em desenvolvimento
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-gray-200">
+                  <h4 className="text-base font-semibold text-apple-darkgray mt-6 mb-1">
+                    Sistema de pontos
+                  </h4>
+                  <p className="text-sm text-gray-500 mb-4">
+                    Pontos atribuídos a cada jogador quando um mix é finalizado. Alterar
+                    estes valores só afeta mixes finalizados a partir de agora.
+                  </p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Por jogo disputado
+                      </label>
+                      <input
+                        type="number" min="0"
+                        value={settings.points_rules?.point_per_match_played ?? 0}
+                        onChange={(e) => setSettings({
+                          ...settings,
+                          points_rules: { ...settings.points_rules, point_per_match_played: parseInt(e.target.value, 10) || 0 }
+                        })}
+                        className="input-field"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Por jogo ganho
+                      </label>
+                      <input
+                        type="number" min="0"
+                        value={settings.points_rules?.point_per_match_win ?? 0}
+                        onChange={(e) => setSettings({
+                          ...settings,
+                          points_rules: { ...settings.points_rules, point_per_match_win: parseInt(e.target.value, 10) || 0 }
+                        })}
+                        className="input-field"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Por participar num mix
+                      </label>
+                      <input
+                        type="number" min="0"
+                        value={settings.points_rules?.point_per_mix_participation ?? 0}
+                        onChange={(e) => setSettings({
+                          ...settings,
+                          points_rules: { ...settings.points_rules, point_per_mix_participation: parseInt(e.target.value, 10) || 0 }
+                        })}
+                        className="input-field"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Por ganhar o mix
+                      </label>
+                      <input
+                        type="number" min="0"
+                        value={settings.points_rules?.point_per_mix_win ?? 0}
+                        onChange={(e) => setSettings({
+                          ...settings,
+                          points_rules: { ...settings.points_rules, point_per_mix_win: parseInt(e.target.value, 10) || 0 }
+                        })}
+                        className="input-field"
+                      />
+                    </div>
                   </div>
                 </div>
 

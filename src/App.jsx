@@ -5,6 +5,7 @@ import Login from './pages/Login'
 import Home from './pages/Home'
 import GameDetails from './pages/GameDetails'
 import Rankings from './pages/Rankings'
+import PlayerDetails from './pages/PlayerDetails'
 import Profile from './pages/Profile'
 import Admin from './pages/Admin'
 import Instructions from './pages/Instructions'
@@ -110,6 +111,16 @@ function AppRoutes() {
           <MemberRoute>
             <Layout>
               <Rankings />
+            </Layout>
+          </MemberRoute>
+        }
+      />
+      <Route
+        path="/jogador/:id"
+        element={
+          <MemberRoute>
+            <Layout>
+              <PlayerDetails />
             </Layout>
           </MemberRoute>
         }

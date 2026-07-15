@@ -1,17 +1,39 @@
 import { useState, useEffect } from 'react'
-import { Trophy, Award, ChevronDown } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { Trophy, Award, ChevronDown, Calendar } from 'lucide-react'
 import { supabase } from '../lib/supabase'
-import { LevelBadge, EmptyState } from '../components/ui'
+import { useAuth } from '../contexts/AuthContext'
+import { LevelBadge, EmptyState, MixCard } from '../components/ui'
+import { winRatePct, buildMonthlyLeaderboard } from '../lib/statsLogic'
+
+const TABS = [
+  { key: 'geral', label: 'Geral' },
+  { key: 'mensal', label: 'Mensal' },
+  { key: 'mixes', label: 'Mixes' },
+]
 
 export default function Rankings() {
+  const { profile } = useAuth()
+  const [tab, setTab] = useState('geral')
+  const [loading, setLoading] = useState(true)
+
+  // Geral
   const [rankings, setRankings] = useState([])
   const [players, setPlayers] = useState([])
   const [showPlayers, setShowPlayers] = useState(false)
-  const [loading, setLoading] = useState(true)
+
+  // Mensal
+  const [monthly, setMonthly] = useState({ months: [], byMonth: {} })
+  const [selectedMonth, setSelectedMonth] = useState(null)
+
+  // Mixes
+  const [mixes, setMixes] = useState([])
 
   useEffect(() => {
     loadRankings()
     loadPlayers()
+    loadMonthly()
+    loadMixes()
   }, [])
 
   const loadPlayers = async () => {
@@ -41,17 +63,18 @@ export default function Rankings() {
 
       if (error) throw error
 
-      // Ranking: mix wins → game wins → win rate
+      // Ranking: total points → mix wins → game wins → win rate
       const rankedData = data
         .map(player => {
           const played = (player.game_wins || 0) + (player.game_losses || 0)
           return {
             ...player,
             gamesPlayed: played,
-            winRate: played > 0 ? ((player.game_wins / played) * 100).toFixed(0) : 0,
+            winRate: winRatePct(player.game_wins || 0, played),
           }
         })
         .sort((a, b) =>
+          (b.total_points || 0) - (a.total_points || 0) ||
           (b.mix_wins || 0) - (a.mix_wins || 0) ||
           (b.game_wins || 0) - (a.game_wins || 0) ||
           b.winRate - a.winRate
@@ -64,6 +87,46 @@ export default function Rankings() {
       setLoading(false)
     }
   }
+
+  const loadMonthly = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('mix_player_stats')
+        .select('*, user:profiles!mix_player_stats_user_id_fkey (name, level), game:games (date)')
+
+      if (error) throw error
+      const built = buildMonthlyLeaderboard(data || [])
+      setMonthly(built)
+      setSelectedMonth(prev => prev || built.months[0]?.key || null)
+    } catch (error) {
+      console.error('Error loading monthly stats:', error)
+    }
+  }
+
+  const loadMixes = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('games')
+        .select(`
+          *,
+          participants (
+            id, user_id, partner_id, status,
+            user:profiles!participants_user_id_fkey (name, level, is_guest),
+            partner:profiles!participants_partner_id_fkey (name, level, is_guest)
+          )
+        `)
+        .neq('status', 'cancelled')
+        .order('date', { ascending: false })
+
+      if (error) throw error
+      setMixes(data || [])
+    } catch (error) {
+      console.error('Error loading mixes:', error)
+    }
+  }
+
+  const isUserJoined = (game) =>
+    game.participants?.some(p => p.user_id === profile?.id || p.partner_id === profile?.id)
 
   // Position chip: 1st gets the volt, 2nd/3rd get ink tones, rest neutral
   const positionStyle = (i) => {
@@ -81,6 +144,8 @@ export default function Rankings() {
     )
   }
 
+  const monthPlayers = selectedMonth ? monthly.byMonth[selectedMonth] || [] : []
+
   return (
     <div className="space-y-5">
       <div>
@@ -88,100 +153,210 @@ export default function Rankings() {
         <h2 className="text-3xl text-court-900">Classificação</h2>
       </div>
 
-      {rankings.length === 0 ? (
-        <EmptyState
-          icon={Award}
-          title="Ranking em branco"
-          subtitle="Joga uns quantos jogos e o teu nome aparece aqui."
-        />
-      ) : (
-        <div className="space-y-3">
-          {rankings.map((player, index) => (
-            <div
-              key={player.id}
-              className={`card ${index === 0 ? 'ring-2 ring-volt-400' : ''}`}
-            >
-              <div className="flex items-center gap-3.5">
-                <div
-                  className={`w-11 h-11 rounded-ctrl flex items-center justify-center font-extrabold text-lg shrink-0 tabular-nums ${positionStyle(index)}`}
+      {/* Tabs */}
+      <div className="flex gap-1 p-1 bg-court-100 rounded-ctrl">
+        {TABS.map(t => (
+          <button
+            key={t.key}
+            onClick={() => setTab(t.key)}
+            className={`flex-1 py-2.5 rounded-ctrl text-sm font-extrabold transition-colors duration-fast ${
+              tab === t.key ? 'bg-surface text-court-900 shadow-card' : 'text-muted hover:text-court-900'
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ─── Geral ──────────────────────────────────────────────────────── */}
+      {tab === 'geral' && (
+        <>
+          {rankings.length === 0 ? (
+            <EmptyState
+              icon={Award}
+              title="Ranking em branco"
+              subtitle="Joga uns quantos jogos e o teu nome aparece aqui."
+            />
+          ) : (
+            <div className="space-y-3">
+              {rankings.map((player, index) => (
+                <Link
+                  key={player.id}
+                  to={`/jogador/${player.user_id}`}
+                  className={`card press block hover:shadow-lift ${index === 0 ? 'ring-2 ring-volt-400' : ''}`}
                 >
-                  {index + 1}
-                </div>
+                  <div className="flex items-center gap-3.5">
+                    <div
+                      className={`w-11 h-11 rounded-ctrl flex items-center justify-center font-extrabold text-lg shrink-0 tabular-nums ${positionStyle(index)}`}
+                    >
+                      {index + 1}
+                    </div>
 
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-base text-court-900 truncate">
-                    {player.user?.name}
-                  </h3>
-                  <div className="mt-0.5">
-                    <LevelBadge level={player.user?.level} />
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-base text-court-900 truncate">
+                        {player.user?.name}
+                      </h3>
+                      <div className="mt-0.5 flex items-center gap-2">
+                        <LevelBadge level={player.user?.level} />
+                        <span className="text-[11px] text-muted">
+                          🏆 {player.mix_wins || 0}/{player.mixes_played || 0} mixes
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="text-right shrink-0">
+                      <div className="flex items-center gap-1.5 justify-end">
+                        <Trophy size={15} className="text-volt-500" />
+                        <span className="text-2xl font-extrabold text-court-900 tabular-nums">
+                          {player.total_points || 0}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-muted">pontos</p>
+                    </div>
                   </div>
-                </div>
 
-                <div className="text-right shrink-0">
-                  <div className="flex items-center gap-1.5 justify-end">
-                    <Trophy size={15} className="text-volt-500" />
-                    <span className="text-2xl font-extrabold text-court-900 tabular-nums">
-                      {player.mix_wins || 0}
-                    </span>
+                  <div className="grid grid-cols-3 gap-3 mt-4 pt-3.5 border-t border-line text-center">
+                    <div>
+                      <p className="text-lg font-extrabold text-ok tabular-nums">{player.game_wins || 0}</p>
+                      <p className="text-[11px] text-muted">jogos ganhos</p>
+                    </div>
+                    <div>
+                      <p className="text-lg font-extrabold text-danger tabular-nums">{player.game_losses || 0}</p>
+                      <p className="text-[11px] text-muted">jogos perdidos</p>
+                    </div>
+                    <div>
+                      <p className="text-lg font-extrabold text-court-600 tabular-nums">{player.winRate}%</p>
+                      <p className="text-[11px] text-muted">taxa vitória</p>
+                    </div>
                   </div>
-                  <p className="text-[11px] text-muted">mixes ganhos</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-3 mt-4 pt-3.5 border-t border-line text-center">
-                <div>
-                  <p className="text-lg font-extrabold text-ok tabular-nums">{player.game_wins || 0}</p>
-                  <p className="text-[11px] text-muted">jogos ganhos</p>
-                </div>
-                <div>
-                  <p className="text-lg font-extrabold text-danger tabular-nums">{player.game_losses || 0}</p>
-                  <p className="text-[11px] text-muted">jogos perdidos</p>
-                </div>
-                <div>
-                  <p className="text-lg font-extrabold text-court-600 tabular-nums">{player.winRate}%</p>
-                  <p className="text-[11px] text-muted">taxa vitória</p>
-                </div>
-              </div>
+                </Link>
+              ))}
             </div>
-          ))}
-        </div>
-      )}
+          )}
 
-      {/* Lista de jogadores — collapsible */}
-      <div className="card p-0 overflow-hidden">
-        <button
-          onClick={() => setShowPlayers(v => !v)}
-          aria-expanded={showPlayers}
-          className="w-full flex items-center justify-between px-5 py-4 min-h-[56px] transition-colors duration-fast hover:bg-court-50"
-        >
-          <span className="text-lg font-extrabold text-court-900">
-            Lista de jogadores
-            <span className="text-muted font-normal text-sm ml-2">({players.length})</span>
-          </span>
-          <ChevronDown
-            size={20}
-            className={`text-muted transition-transform duration-base ${showPlayers ? 'rotate-180' : ''}`}
-          />
-        </button>
+          {/* Lista de jogadores — collapsible */}
+          <div className="card p-0 overflow-hidden">
+            <button
+              onClick={() => setShowPlayers(v => !v)}
+              aria-expanded={showPlayers}
+              className="w-full flex items-center justify-between px-5 py-4 min-h-[56px] transition-colors duration-fast hover:bg-court-50"
+            >
+              <span className="text-lg font-extrabold text-court-900">
+                Lista de jogadores
+                <span className="text-muted font-normal text-sm ml-2">({players.length})</span>
+              </span>
+              <ChevronDown
+                size={20}
+                className={`text-muted transition-transform duration-base ${showPlayers ? 'rotate-180' : ''}`}
+              />
+            </button>
 
-        {showPlayers && (
-          <div className="border-t border-line divide-y divide-line animate-fade-up">
-            {players.length === 0 ? (
-              <p className="text-muted text-sm text-center py-6">Ainda não há jogadores registados</p>
-            ) : (
-              players.map(p => (
-                <div key={p.id} className="flex items-center gap-3 px-5 py-3">
-                  <div className="w-9 h-9 bg-court-600 text-white rounded-full flex items-center justify-center font-extrabold text-sm shrink-0">
-                    {(p.name || '?').charAt(0).toUpperCase()}
-                  </div>
-                  <p className="flex-1 min-w-0 font-extrabold text-court-900 truncate">{p.name}</p>
-                  <LevelBadge level={p.level} />
-                </div>
-              ))
+            {showPlayers && (
+              <div className="border-t border-line divide-y divide-line animate-fade-up">
+                {players.length === 0 ? (
+                  <p className="text-muted text-sm text-center py-6">Ainda não há jogadores registados</p>
+                ) : (
+                  players.map(p => (
+                    <Link
+                      key={p.id}
+                      to={`/jogador/${p.id}`}
+                      className="flex items-center gap-3 px-5 py-3 transition-colors duration-fast hover:bg-court-50"
+                    >
+                      <div className="w-9 h-9 bg-court-600 text-white rounded-full flex items-center justify-center font-extrabold text-sm shrink-0">
+                        {(p.name || '?').charAt(0).toUpperCase()}
+                      </div>
+                      <p className="flex-1 min-w-0 font-extrabold text-court-900 truncate">{p.name}</p>
+                      <LevelBadge level={p.level} />
+                    </Link>
+                  ))
+                )}
+              </div>
             )}
           </div>
-        )}
-      </div>
+        </>
+      )}
+
+      {/* ─── Mensal ─────────────────────────────────────────────────────── */}
+      {tab === 'mensal' && (
+        <>
+          {monthly.months.length === 0 ? (
+            <EmptyState
+              icon={Calendar}
+              title="Sem dados mensais"
+              subtitle="Assim que um mix terminar, o mês aparece aqui."
+            />
+          ) : (
+            <>
+              <select
+                value={selectedMonth || ''}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                className="input-field capitalize"
+              >
+                {monthly.months.map(m => (
+                  <option key={m.key} value={m.key} className="capitalize">{m.label}</option>
+                ))}
+              </select>
+
+              <div className="space-y-3">
+                {monthPlayers.map((p, index) => (
+                  <Link
+                    key={p.user_id}
+                    to={`/jogador/${p.user_id}`}
+                    className={`card press block hover:shadow-lift ${index === 0 ? 'ring-2 ring-volt-400' : ''}`}
+                  >
+                    <div className="flex items-center gap-3.5">
+                      <div className={`w-11 h-11 rounded-ctrl flex items-center justify-center font-extrabold text-lg shrink-0 tabular-nums ${positionStyle(index)}`}>
+                        {index + 1}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-base text-court-900 truncate">{p.user?.name || '—'}</h3>
+                        <p className="text-[11px] text-muted mt-0.5">
+                          {p.participations} {p.participations === 1 ? 'mix' : 'mixes'} • 🏆 {p.mixesWon} ganho{p.mixesWon === 1 ? '' : 's'}
+                        </p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-2xl font-extrabold text-court-900 tabular-nums">{p.points}</p>
+                        <p className="text-[11px] text-muted">pontos</p>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-3 mt-4 pt-3.5 border-t border-line text-center">
+                      <div>
+                        <p className="text-lg font-extrabold text-ok tabular-nums">{p.victories}</p>
+                        <p className="text-[11px] text-muted">vitórias</p>
+                      </div>
+                      <div>
+                        <p className="text-lg font-extrabold text-court-600 tabular-nums">{p.played}</p>
+                        <p className="text-[11px] text-muted">jogos</p>
+                      </div>
+                      <div>
+                        <p className="text-lg font-extrabold text-court-600 tabular-nums">{p.winRate}%</p>
+                        <p className="text-[11px] text-muted">taxa vitória</p>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </>
+          )}
+        </>
+      )}
+
+      {/* ─── Mixes ──────────────────────────────────────────────────────── */}
+      {tab === 'mixes' && (
+        mixes.length === 0 ? (
+          <EmptyState
+            icon={Calendar}
+            title="Sem mixes"
+            subtitle="Ainda não há mixes registados."
+          />
+        ) : (
+          <div className="space-y-3.5">
+            {mixes.map(game => (
+              <MixCard key={game.id} game={game} joined={isUserJoined(game)} />
+            ))}
+          </div>
+        )
+      )}
     </div>
   )
 }

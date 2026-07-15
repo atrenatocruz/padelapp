@@ -9,6 +9,7 @@ import {
   roundRobinRound, standings, eliminationPhases, firstElimMatches, nextElimMatches,
   PHASE_LABEL, FORMAT_LABEL,
 } from '../lib/mixLogic'
+import { winRatePct } from '../lib/statsLogic'
 
 export default function GameDetails() {
   const { id } = useParams()
@@ -31,6 +32,7 @@ export default function GameDetails() {
   const [editingPairs, setEditingPairs] = useState(false)
   const [swapPick, setSwapPick] = useState(null) // { teamId, slot: 'player1_id'|'player2_id' }
   const [showShare, setShowShare] = useState(false)
+  const [mixStats, setMixStats] = useState([])
 
   const isAdmin = profile?.is_admin === true
 
@@ -103,6 +105,19 @@ export default function GameDetails() {
       setParticipants(participantsData || [])
       setTeams(teamsData || [])
       setMatches(matchesData || [])
+
+      // Per-mix leaderboard — only exists once the mix has been finalized
+      if (gameData.status === 'finished') {
+        const { data: statsData } = await supabase
+          .from('mix_player_stats')
+          .select('*, user:profiles!mix_player_stats_user_id_fkey (name, level)')
+          .eq('game_id', id)
+          .order('points_earned', { ascending: false })
+          .order('matches_won', { ascending: false })
+        setMixStats(statsData || [])
+      } else {
+        setMixStats([])
+      }
     } catch (error) {
       console.error('Error loading game details:', error)
     } finally {
@@ -654,6 +669,37 @@ export default function GameDetails() {
         <div className="card bg-court-900 text-center">
           <p className="text-court-200 text-xs font-extrabold uppercase tracking-widest mb-2">🏆 Vencedores do mix</p>
           <p className="text-2xl font-extrabold text-volt-400">{teamName(game.winner_team_id)}</p>
+        </div>
+      )}
+
+      {/* Estatísticas do mix — classificação final por pontos */}
+      {game.status === 'finished' && mixStats.length > 0 && (
+        <div className="card">
+          <h3 className="text-lg text-court-900 mb-3">Estatísticas do Mix</h3>
+          <div className="space-y-1.5">
+            {mixStats.map((s, i) => (
+              <div key={s.id} className="flex items-center gap-3 py-2 border-b border-line last:border-0">
+                <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-extrabold tabular-nums shrink-0 ${
+                  i === 0 ? 'bg-volt-400 text-court-900' : 'bg-court-100 text-court-700'
+                }`}>
+                  {i + 1}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <p className="font-extrabold text-court-900 truncate">
+                    {s.user?.name || '—'}
+                    {s.mix_won && <span className="ml-1.5">🏆</span>}
+                  </p>
+                  <p className="text-[11px] text-muted">
+                    {s.matches_won}/{s.matches_played} jogos • {winRatePct(s.matches_won, s.matches_played)}% vitórias
+                  </p>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="text-lg font-extrabold text-court-900 tabular-nums">{s.points_earned}</p>
+                  <p className="text-[11px] text-muted">pontos</p>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
