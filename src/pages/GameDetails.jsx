@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Calendar, MapPin, ArrowLeft, UserPlus, User, Check, Lock, Trophy, Play, ChevronRight, Swords } from 'lucide-react'
+import { Calendar, MapPin, ArrowLeft, UserPlus, User, Check, Lock, Trophy, Play, ChevronRight, Swords, X, Repeat } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { PrimaryButton, LevelBadge, GuestBadge, PlayerAvatarRow, EmptyState } from '../components/ui'
@@ -28,6 +28,8 @@ export default function GameDetails() {
   const [mixError, setMixError] = useState('')
   const [busy, setBusy] = useState(false)
   const [scores, setScores] = useState({}) // matchId -> {a, b}
+  const [editingPairs, setEditingPairs] = useState(false)
+  const [swapPick, setSwapPick] = useState(null) // { teamId, slot: 'player1_id'|'player2_id' }
 
   const isAdmin = profile?.is_admin === true
 
@@ -202,6 +204,86 @@ export default function GameDetails() {
     } catch (error) {
       console.error('Error leaving game:', error)
       alert('Erro ao sair do jogo. Tenta novamente.')
+    }
+  }
+
+  /* ─── Admin: remove a player from the mix (before it starts) ─────── */
+
+  const handleRemovePerson = async (person) => {
+    const msg = person.rowOwner && person.hasPartner
+      ? `Remover ${person.name}? O parceiro dele também sai (inscreveram-se juntos).`
+      : `Remover ${person.name} do mix?`
+    if (!confirm(msg)) return
+
+    setBusy(true)
+    setMixError('')
+    try {
+      if (person.rowOwner) {
+        // remove the whole participation row (owner + partner, if any)
+        const { error } = await supabase
+          .from('participants')
+          .delete()
+          .eq('id', person.rowId)
+        if (error) throw error
+        // (DB trigger reopens the game if it was closed)
+      } else {
+        // partner slot only: detach, keep the row owner in the game
+        const { error } = await supabase
+          .from('participants')
+          .update({ partner_id: null, joined_alone: true })
+          .eq('id', person.rowId)
+        if (error) throw error
+        // reopen manually — the reopen trigger only fires on DELETE
+        if (game?.status === 'closed') {
+          await supabase.from('games').update({ status: 'open' }).eq('id', id).eq('status', 'closed')
+        }
+      }
+      loadGameDetails()
+    } catch (error) {
+      console.error('Error removing player:', error)
+      setMixError('Erro ao remover o jogador')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  /* ─── Admin: swap players between duplas ──────────────────────────── */
+
+  const handlePickForSwap = (teamId, slot) => {
+    if (!swapPick) {
+      setSwapPick({ teamId, slot })
+      return
+    }
+    if (swapPick.teamId === teamId && swapPick.slot === slot) {
+      setSwapPick(null) // tapped the same player — deselect
+      return
+    }
+    doSwap(swapPick, { teamId, slot })
+  }
+
+  const doSwap = async (pickA, pickB) => {
+    const a = teams.find(t => t.id === pickA.teamId)
+    const b = teams.find(t => t.id === pickB.teamId)
+    if (!a || !b || a.id === b.id) {
+      setSwapPick(null) // swapping within the same dupla changes nothing
+      return
+    }
+    setBusy(true)
+    setMixError('')
+    try {
+      const pa = a[pickA.slot]
+      const pb = b[pickB.slot]
+      const { error: e1 } = await supabase.from('teams').update({ [pickA.slot]: pb }).eq('id', a.id)
+      if (e1) throw e1
+      const { error: e2 } = await supabase.from('teams').update({ [pickB.slot]: pa }).eq('id', b.id)
+      if (e2) throw e2
+      setSwapPick(null)
+      loadGameDetails()
+    } catch (error) {
+      console.error('Error swapping players:', error)
+      setMixError('Erro ao trocar os jogadores')
+    } finally {
+      setBusy(false)
     }
   }
 
@@ -396,8 +478,8 @@ export default function GameDetails() {
 
   // Every person in the game (rows + partners), for list + capacity
   const people = participants.flatMap(p => [
-    { ...p.user, rowOwner: true, rowUserId: p.user_id },
-    ...(p.partner ? [{ ...p.partner, rowOwner: false, rowUserId: p.user_id }] : []),
+    { ...p.user, rowOwner: true, rowId: p.id, hasPartner: !!p.partner },
+    ...(p.partner ? [{ ...p.partner, rowOwner: false, rowId: p.id, hasPartner: true }] : []),
   ]).filter(x => x?.id)
 
   const peopleCount = countPeople(participants)
@@ -547,7 +629,28 @@ export default function GameDetails() {
         <>
           {/* Duplas */}
           <div className="card">
-            <h3 className="text-lg text-court-900 mb-3">Duplas</h3>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-lg text-court-900">Duplas</h3>
+              {isAdmin && game.status === 'in_progress' && (
+                <button
+                  onClick={() => {
+                    setEditingPairs(v => !v)
+                    setSwapPick(null)
+                  }}
+                  className="inline-flex items-center gap-1.5 text-court-600 text-sm font-extrabold min-h-[44px] px-2"
+                >
+                  <Repeat size={16} />
+                  {editingPairs ? 'Concluir' : 'Editar duplas'}
+                </button>
+              )}
+            </div>
+
+            {editingPairs && (
+              <p className="text-muted text-sm mb-3 bg-court-50 rounded-ctrl px-3 py-2.5">
+                Toca em <strong className="text-court-900">dois jogadores</strong> (de duplas diferentes) para os trocar.
+              </p>
+            )}
+
             <div className="space-y-2">
               {teams.map((t, i) => (
                 <div key={t.id} className={`flex items-center gap-3 rounded-ctrl p-3 ${
@@ -556,10 +659,32 @@ export default function GameDetails() {
                   <span className="w-7 h-7 rounded-full bg-court-600 text-white text-xs font-extrabold flex items-center justify-center shrink-0">
                     {i + 1}
                   </span>
-                  <p className="flex-1 font-extrabold text-court-900 truncate">
-                    {teamName(t.id)}
-                    {t.id === game.winner_team_id && ' 🏆'}
-                  </p>
+                  {editingPairs ? (
+                    <div className="flex-1 flex items-center gap-1.5 flex-wrap">
+                      {[['player1_id', t.player1], ['player2_id', t.player2]].map(([slot, player]) => {
+                        const picked = swapPick?.teamId === t.id && swapPick?.slot === slot
+                        return (
+                          <button
+                            key={slot}
+                            onClick={() => handlePickForSwap(t.id, slot)}
+                            disabled={busy}
+                            className={`px-3 py-2 min-h-[40px] rounded-full text-sm font-extrabold transition-all duration-fast active:scale-[0.97] ${
+                              picked
+                                ? 'bg-volt-400 text-court-900 ring-2 ring-court-900'
+                                : 'bg-surface text-court-900 border border-line hover:border-court-200'
+                            }`}
+                          >
+                            {player?.name?.split(' ')[0] || '?'}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  ) : (
+                    <p className="flex-1 font-extrabold text-court-900 truncate">
+                      {teamName(t.id)}
+                      {t.id === game.winner_team_id && ' 🏆'}
+                    </p>
+                  )}
                   {(t.player1?.is_guest || t.player2?.is_guest) && <GuestBadge />}
                 </div>
               ))}
@@ -724,6 +849,16 @@ export default function GameDetails() {
                   {person.is_guest
                     ? <GuestBadge />
                     : <LevelBadge level={person.level} />}
+                  {isAdmin && (
+                    <button
+                      onClick={() => handleRemovePerson(person)}
+                      disabled={busy}
+                      title={`Remover ${person.name}`}
+                      className="w-9 h-9 flex items-center justify-center rounded-full text-muted hover:text-danger hover:bg-danger/10 transition-colors duration-fast shrink-0"
+                    >
+                      <X size={17} />
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
