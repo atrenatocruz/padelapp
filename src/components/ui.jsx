@@ -1,5 +1,6 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { MapPin, CheckCircle2, ChevronRight, Lock, Play, Calendar } from 'lucide-react'
+import { MapPin, CheckCircle2, ChevronRight, Lock, Play, Calendar, X, Share2, MessageCircle, Link2 } from 'lucide-react'
 
 /* ─── Date fields ────────────────────────────────────────────────────────
    Native <input type=date/datetime-local> pickers render in the device
@@ -90,10 +91,11 @@ export const levelRange = (levels) => {
    variant: "volt" (main CTA) | "navy" | "ghost" | "danger" */
 export function PrimaryButton({ variant = 'volt', className = '', children, ...props }) {
   const variants = {
-    volt:   'bg-volt-400 text-court-900 hover:bg-volt-300 shadow-card',
-    navy:   'bg-court-600 text-white hover:bg-court-500 shadow-card',
-    ghost:  'bg-surface text-court-900 border border-line hover:bg-court-50 hover:border-court-200',
-    danger: 'bg-danger/10 text-danger hover:bg-danger/15',
+    volt:     'bg-volt-400 text-court-900 hover:bg-volt-300 shadow-card',
+    navy:     'bg-court-600 text-white hover:bg-court-500 shadow-card',
+    ghost:    'bg-surface text-court-900 border border-line hover:bg-court-50 hover:border-court-200',
+    danger:   'bg-danger/10 text-danger hover:bg-danger/15',
+    whatsapp: 'bg-[#25D366] text-white hover:bg-[#20bd5a] shadow-card',
   }
   return (
     <button
@@ -304,5 +306,112 @@ export function MixCard({ game, joined = false }) {
         )}
       </div>
     </Link>
+  )
+}
+
+/* ─── ShareModal ─────────────────────────────────────────────────────────
+   Share sheet used for mixes: editable caption + link, WhatsApp + native
+   share (when the device supports it) + copy-link fallback. */
+export function ShareModal({ title = 'Partilhar', message, url, onClose }) {
+  const [caption, setCaption] = useState(message)
+  const [copied, setCopied] = useState(false)
+
+  const fullText = `${caption}\n\n🔗 ${url}`
+
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(url)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } catch {
+      // Clipboard API unavailable (older browsers, insecure context) — the
+      // link is still visible in the textarea/preview for manual copy.
+    }
+  }
+
+  const handleWhatsApp = () => {
+    window.open(`https://wa.me/?text=${encodeURIComponent(fullText)}`, '_blank', 'noopener,noreferrer')
+  }
+
+  const handleNativeShare = async () => {
+    try {
+      await navigator.share({ title, text: caption, url })
+    } catch {
+      // user cancelled the OS share sheet — nothing to do
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-court-900/50 animate-fade-in"
+      onClick={onClose}
+    >
+      <div
+        className="bg-surface rounded-t-card sm:rounded-card shadow-lift w-full sm:max-w-md max-h-[90vh] overflow-y-auto animate-pop"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between px-5 pt-5 pb-3">
+          <div className="flex items-center gap-2">
+            <Share2 size={20} className="text-court-600" />
+            <h3 className="text-lg text-court-900">{title}</h3>
+          </div>
+          <button
+            onClick={onClose}
+            aria-label="Fechar"
+            className="w-9 h-9 flex items-center justify-center rounded-full text-muted hover:bg-court-50 hover:text-court-900 transition-colors duration-fast"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="px-5 pb-5 space-y-4">
+          <div className="bg-sand rounded-ctrl p-3.5 text-sm text-court-900 whitespace-pre-line">
+            {fullText}
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-sm font-extrabold text-court-900">Legenda</label>
+              {caption !== message && (
+                <button
+                  onClick={() => setCaption(message)}
+                  className="text-court-600 text-xs font-extrabold"
+                >
+                  Repor
+                </button>
+              )}
+            </div>
+            <textarea
+              value={caption}
+              onChange={(e) => setCaption(e.target.value)}
+              rows={4}
+              className="input-field resize-none"
+            />
+          </div>
+
+          <button
+            onClick={handleCopyLink}
+            className="w-full flex items-center gap-2.5 rounded-ctrl border border-line px-3.5 py-3 min-h-[48px]
+                       text-sm font-extrabold text-court-900 hover:border-court-200 transition-colors duration-fast"
+          >
+            <Link2 size={17} className="text-court-600 shrink-0" />
+            <span className="flex-1 min-w-0 text-left truncate text-muted font-normal">{url}</span>
+            <span className="text-court-600 shrink-0">{copied ? 'Copiado!' : 'Copiar'}</span>
+          </button>
+
+          <PrimaryButton variant="whatsapp" onClick={handleWhatsApp} className="w-full">
+            <MessageCircle size={19} />
+            Partilhar via WhatsApp
+          </PrimaryButton>
+
+          {typeof navigator !== 'undefined' && navigator.share && (
+            <PrimaryButton variant="ghost" onClick={handleNativeShare} className="w-full">
+              <Share2 size={19} />
+              Mais opções
+            </PrimaryButton>
+          )}
+        </div>
+      </div>
+    </div>
   )
 }

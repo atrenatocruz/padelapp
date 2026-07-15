@@ -14,6 +14,16 @@
      quarters). Standings tie-break: wins → point diff → points scored (#5).
    ════════════════════════════════════════════════════════════════════════ */
 
+/** Abbreviate a long name to "First L." (first name + last initial).
+    Short names (<= maxLen) are kept in full. "Renato Pereira da Cruz" -> "Renato C." */
+export function shortName(name, maxLen = 16) {
+  if (!name) return ''
+  const parts = name.trim().split(/\s+/)
+  if (parts.length <= 1 || name.length <= maxLen) return name
+  const last = parts[parts.length - 1]
+  return `${parts[0]} ${last.charAt(0).toUpperCase()}.`
+}
+
 /** People occupying slots: a row with partner counts as 2. */
 export const countPeople = (participants = []) =>
   participants
@@ -99,31 +109,27 @@ export function nextSobeDesce(roundMatches, numCourts) {
     .sort((a, b) => a.court_number - b.court_number)
 }
 
-/** Round-robin (circle method), capped at maxRounds. Returns array of rounds,
-    each round = [{court_number, team_a_id, team_b_id}]. n teams = 2×courts,
-    so every round fills every court with no byes. */
-export function roundRobin(teamIds, numCourts, maxRounds) {
+/** Round-robin (circle method), one round at a time — the admin draws each
+    round explicitly rather than the whole schedule being pre-generated.
+    roundIndex is 0-based (0 = round 1). n teams = 2×courts, so every round
+    fills every court with no byes. */
+export function roundRobinRound(teamIds, numCourts, roundIndex) {
   const n = teamIds.length
   if (n < 2) return []
   const fixed = teamIds[0]
-  let rest = teamIds.slice(1)
-  const rounds = []
-  const fullRounds = n - 1
-
-  for (let r = 0; r < Math.min(fullRounds, maxRounds); r++) {
-    const arr = [fixed, ...rest]
-    const ms = []
-    for (let i = 0; i < Math.floor(n / 2); i++) {
-      ms.push({
-        court_number: (i % numCourts) + 1,
-        team_a_id: arr[i],
-        team_b_id: arr[n - 1 - i],
-      })
-    }
-    rounds.push(ms)
-    rest = [rest[rest.length - 1], ...rest.slice(0, rest.length - 1)]
+  const rest = teamIds.slice(1)
+  const rot = rest.length ? roundIndex % rest.length : 0
+  const rotated = rot === 0 ? rest : [...rest.slice(-rot), ...rest.slice(0, -rot)]
+  const arr = [fixed, ...rotated]
+  const ms = []
+  for (let i = 0; i < Math.floor(n / 2); i++) {
+    ms.push({
+      court_number: (i % numCourts) + 1,
+      team_a_id: arr[i],
+      team_b_id: arr[n - 1 - i],
+    })
   }
-  return rounds
+  return ms
 }
 
 /** Classificação da fase de grupos: vitórias → diferença de pontos → pontos. */

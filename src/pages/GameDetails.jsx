@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Calendar, MapPin, ArrowLeft, UserPlus, User, Check, Lock, Trophy, Play, ChevronRight, Swords, X, Repeat } from 'lucide-react'
+import { Calendar, MapPin, ArrowLeft, UserPlus, User, Check, Lock, Trophy, Play, ChevronRight, Swords, X, Repeat, Share2 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
-import { PrimaryButton, LevelBadge, GuestBadge, PlayerAvatarRow, EmptyState } from '../components/ui'
+import { PrimaryButton, LevelBadge, GuestBadge, PlayerAvatarRow, EmptyState, ShareModal } from '../components/ui'
 import {
   countPeople, totalRounds, formDuplas, seedCourts, nextSobeDesce,
-  roundRobin, standings, eliminationPhases, firstElimMatches, nextElimMatches,
+  roundRobinRound, standings, eliminationPhases, firstElimMatches, nextElimMatches,
   PHASE_LABEL, FORMAT_LABEL,
 } from '../lib/mixLogic'
 
@@ -30,6 +30,7 @@ export default function GameDetails() {
   const [scores, setScores] = useState({}) // matchId -> {a, b}
   const [editingPairs, setEditingPairs] = useState(false)
   const [swapPick, setSwapPick] = useState(null) // { teamId, slot: 'player1_id'|'player2_id' }
+  const [showShare, setShowShare] = useState(false)
 
   const isAdmin = profile?.is_admin === true
 
@@ -289,6 +290,7 @@ export default function GameDetails() {
 
   /* ─── Mix engine actions (admin) ──────────────────────────────────── */
 
+  // Só forma as duplas — as rondas arrancam depois, uma a uma, por decisão do admin.
   const handleStartMix = async () => {
     setBusy(true)
     setMixError('')
@@ -305,7 +307,7 @@ export default function GameDetails() {
       const duplas = formDuplas(participants, statsById)
       if (duplas.length < 2) throw new Error('São precisas pelo menos 2 duplas')
 
-      const { data: insertedTeams, error: teamsError } = await supabase
+      const { error: teamsError } = await supabase
         .from('teams')
         .insert(duplas.map(d => ({
           game_id: id,
@@ -313,24 +315,7 @@ export default function GameDetails() {
           player2_id: d.player2.id,
           seed_ranking: d.seed,
         })))
-        .select()
       if (teamsError) throw teamsError
-
-      // 4.3 sorteio conforme o formato
-      const numCourts = game.num_courts || 1
-      let rows
-      if ((game.format || 'sobe_desce') === 'sobe_desce') {
-        rows = seedCourts(insertedTeams, numCourts).map(m => ({ ...m, game_id: id, round_number: 1, phase: 'group' }))
-      } else {
-        const orderedIds = [...insertedTeams]
-          .sort((a, b) => (b.seed_ranking ?? 0) - (a.seed_ranking ?? 0))
-          .map(t => t.id)
-        rows = roundRobin(orderedIds, numCourts, totalRounds(game))
-          .flatMap((round, i) => round.map(m => ({ ...m, game_id: id, round_number: i + 1, phase: 'group' })))
-      }
-
-      const { error: matchesError } = await supabase.from('matches').insert(rows)
-      if (matchesError) throw matchesError
 
       const { error: statusError } = await supabase
         .from('games')
@@ -341,7 +326,32 @@ export default function GameDetails() {
       loadGameDetails()
     } catch (error) {
       console.error('Error starting mix:', error)
-      setMixError(error.message || 'Erro ao começar o jogo')
+      setMixError(error.message || 'Erro ao começar o mix')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const orderedTeamIds = () =>
+    [...teams].sort((a, b) => (b.seed_ranking ?? 0) - (a.seed_ranking ?? 0)).map(t => t.id)
+
+  const handleStartRound1 = async () => {
+    setBusy(true)
+    setMixError('')
+    try {
+      const numCourts = game.num_courts || 1
+      const rows = isSobeDesce
+        ? seedCourts(teams, numCourts)
+        : roundRobinRound(orderedTeamIds(), numCourts, 0)
+
+      const { error } = await supabase.from('matches').insert(
+        rows.map(m => ({ ...m, game_id: id, round_number: 1, phase: 'group' }))
+      )
+      if (error) throw error
+      loadGameDetails()
+    } catch (error) {
+      console.error('Error starting round 1:', error)
+      setMixError(error.message || 'Erro ao iniciar a ronda 1')
     } finally {
       setBusy(false)
     }
@@ -378,40 +388,52 @@ export default function GameDetails() {
   // Derived tournament state
   const roundsTotal = game ? totalRounds(game) : 0
   const numCourts = game?.num_courts || 1
+  const roundsStarted = matches.length > 0
   const maxRound = matches.length ? Math.max(...matches.map(m => m.round_number)) : 0
   const currentRoundMatches = matches.filter(m => m.round_number === maxRound)
   const currentRoundDone = currentRoundMatches.length > 0 && currentRoundMatches.every(m => m.winner_team_id)
   const allDone = matches.length > 0 && matches.every(m => m.winner_team_id)
   const isSobeDesce = (game?.format || 'sobe_desce') === 'sobe_desce'
   const groupRounds = isSobeDesce ? roundsTotal : Math.min(Math.max(teams.length - 1, 1), roundsTotal)
+  const inGroupPhase = maxRound < groupRounds
   const elimPhases = isSobeDesce ? [] : eliminationPhases(teams.length, roundsTotal - groupRounds)
   const existingElim = [...new Set(matches.filter(m => m.phase !== 'group').map(m => m.phase))]
   const nextPhase = elimPhases.find(ph => !existingElim.includes(ph))
 
-  const canAdvance = isSobeDesce
-    ? currentRoundDone && maxRound < roundsTotal
-    : allDone && !!nextPhase
-  const canFinalize = matches.length > 0 && allDone && !canAdvance
+  // The admin ends the current round manually — no timer, no auto-advance.
+  // Ending a round also draws the next one (group round or elim phase) in the same tap.
+  const canAdvance = currentRoundDone && (inGroupPhase || !!nextPhase)
+  const canFinalize = roundsStarted && allDone && !canAdvance
 
-  const winnerTeamId = (() => {
-    if (!allDone || !matches.length) return null
+  // Current leader — used both when the mix ends naturally (all rounds
+  // played) and when the admin cuts it short early with "Terminar Mix".
+  const currentWinnerTeamId = (() => {
+    if (!matches.some(m => m.winner_team_id)) return null
     if (isSobeDesce) {
-      const last = matches.filter(m => m.round_number === maxRound && m.court_number === 1)[0]
-      return last?.winner_team_id || null
+      // most recent round with a completed court-1 match; falls back to the
+      // overall leader if the current round is still only partly scored
+      for (let r = maxRound; r >= 1; r--) {
+        const m = matches.find(mm => mm.round_number === r && mm.court_number === 1 && mm.winner_team_id)
+        if (m) return m.winner_team_id
+      }
+      return standings(teams, matches)[0]?.team?.id || null
     }
-    const finalMatch = matches.find(m => m.phase === 'final')
+    const finalMatch = matches.find(m => m.phase === 'final' && m.winner_team_id)
     if (finalMatch) return finalMatch.winner_team_id
     return standings(teams, matches)[0]?.team?.id || null
   })()
+  const anyScoreSaved = matches.some(m => m.winner_team_id)
 
   const handleAdvance = async () => {
     setBusy(true)
     setMixError('')
     try {
       let rows, phase
-      if (isSobeDesce) {
+      if (inGroupPhase) {
         phase = 'group'
-        rows = nextSobeDesce(currentRoundMatches, numCourts)
+        rows = isSobeDesce
+          ? nextSobeDesce(currentRoundMatches, numCourts)
+          : roundRobinRound(orderedTeamIds(), numCourts, maxRound)
       } else {
         phase = nextPhase
         if (existingElim.length === 0) {
@@ -428,22 +450,25 @@ export default function GameDetails() {
       if (error) throw error
       loadGameDetails()
     } catch (error) {
-      console.error('Error advancing round:', error)
-      setMixError(error.message || 'Erro ao avançar a ronda')
+      console.error('Error ending round:', error)
+      setMixError(error.message || 'Erro ao terminar a ronda')
     } finally {
       setBusy(false)
     }
   }
 
-  const handleFinalize = async () => {
-    if (!winnerTeamId) return
-    if (!confirm('Finalizar o mix e atualizar o ranking?')) return
+  const handleFinalize = async (early = false) => {
+    if (!currentWinnerTeamId) return
+    const msg = early
+      ? 'Terminar o mix agora, sem jogar as rondas restantes, e atualizar o ranking com o líder atual?'
+      : 'Finalizar o mix e atualizar o ranking?'
+    if (!confirm(msg)) return
     setBusy(true)
     setMixError('')
     try {
       const { error } = await supabase.rpc('finalize_mix', {
         p_game_id: id,
-        p_winner_team_id: winnerTeamId,
+        p_winner_team_id: currentWinnerTeamId,
       })
       if (error) throw error
       loadGameDetails()
@@ -474,6 +499,20 @@ export default function GameDetails() {
     if (!t) return '—'
     const first = (p) => p?.name?.split(' ')[0] || '?'
     return `${first(t.player1)} / ${first(t.player2)}`
+  }
+
+  const shareUrl = typeof window !== 'undefined' ? window.location.href : ''
+  const buildShareMessage = () => {
+    const lines = [`🎾 ${game?.title || 'Mix'}`, `📅 ${game ? formatDate(game.date) : ''}`]
+    if (game?.location) lines.push(`📍 ${game.location}`)
+    if (game?.status === 'finished' && game.winner_team_id) {
+      lines.push('', `🏆 Vencedores: ${teamName(game.winner_team_id)}`)
+    } else if (game?.status === 'in_progress') {
+      lines.push('', '📊 Vê a classificação em direto!')
+    } else {
+      lines.push('', '🙋 Junta-te ao mix!')
+    }
+    return lines.join('\n')
   }
 
   // Every person in the game (rows + partners), for list + capacity
@@ -534,13 +573,31 @@ export default function GameDetails() {
         </div>
       )}
 
-      <button
-        onClick={() => navigate('/')}
-        className="inline-flex items-center gap-1.5 text-court-600 font-extrabold text-sm min-h-[44px] pr-3"
-      >
-        <ArrowLeft size={18} />
-        Jogos
-      </button>
+      <div className="flex items-center justify-between">
+        <button
+          onClick={() => navigate('/')}
+          className="inline-flex items-center gap-1.5 text-court-600 font-extrabold text-sm min-h-[44px] pr-3"
+        >
+          <ArrowLeft size={18} />
+          Jogos
+        </button>
+        <button
+          onClick={() => setShowShare(true)}
+          className="inline-flex items-center gap-1.5 text-court-600 font-extrabold text-sm min-h-[44px] pl-3"
+        >
+          <Share2 size={18} />
+          Partilhar
+        </button>
+      </div>
+
+      {showShare && (
+        <ShareModal
+          title="Partilhar Mix"
+          message={buildShareMessage()}
+          url={shareUrl}
+          onClose={() => setShowShare(false)}
+        />
+      )}
 
       {/* Hero card */}
       <div className="card relative overflow-hidden">
@@ -616,11 +673,11 @@ export default function GameDetails() {
         </div>
       )}
 
-      {/* Começar o jogo (admin, mix cheio) */}
+      {/* Começar o Mix (admin, mix cheio) — só forma as duplas; a Ronda 1 arranca à parte */}
       {canStart && (
         <PrimaryButton onClick={handleStartMix} disabled={busy} className="w-full">
           <Play size={19} />
-          {busy ? 'A sortear…' : 'Começar o jogo'}
+          {busy ? 'A formar duplas…' : 'Começar o Mix'}
         </PrimaryButton>
       )}
 
@@ -692,7 +749,7 @@ export default function GameDetails() {
           </div>
 
           {/* Classificação (todos contra todos) */}
-          {!isSobeDesce && tctStandings.length > 0 && (
+          {!isSobeDesce && roundsStarted && tctStandings.length > 0 && (
             <div className="card">
               <h3 className="text-lg text-court-900 mb-3">Classificação — fase de grupo</h3>
               <div className="space-y-1.5">
@@ -791,27 +848,40 @@ export default function GameDetails() {
             )
           })}
 
-          {/* Controlo de rondas (admin) */}
+          {/* Controlo de rondas (admin) — tudo manual, sem temporizador */}
           {isAdmin && game.status === 'in_progress' && (
             <div className="space-y-3">
-              {canAdvance && (
+              {!roundsStarted && (
+                <PrimaryButton onClick={handleStartRound1} disabled={busy} className="w-full">
+                  <Play size={19} />
+                  {busy ? 'A sortear…' : 'Iniciar Ronda 1'}
+                </PrimaryButton>
+              )}
+              {roundsStarted && canAdvance && (
                 <PrimaryButton onClick={handleAdvance} disabled={busy} className="w-full">
                   <ChevronRight size={19} />
-                  {busy ? 'A sortear…'
-                    : isSobeDesce ? `Avançar para a ronda ${maxRound + 1}`
-                    : `Sortear ${PHASE_LABEL[nextPhase]?.toLowerCase()}`}
+                  {busy ? 'A processar…'
+                    : inGroupPhase ? `Terminar Ronda ${maxRound}`
+                    : `Terminar Ronda ${maxRound} — sortear ${PHASE_LABEL[nextPhase]?.toLowerCase()}`}
                 </PrimaryButton>
               )}
               {canFinalize && (
-                <PrimaryButton variant="navy" onClick={handleFinalize} disabled={busy} className="w-full">
+                <PrimaryButton variant="navy" onClick={() => handleFinalize(false)} disabled={busy} className="w-full">
                   <Trophy size={19} />
-                  {busy ? 'A finalizar…' : 'Finalizar jogo'}
+                  {busy ? 'A finalizar…' : 'Finalizar Mix'}
                 </PrimaryButton>
               )}
-              {!canAdvance && !canFinalize && (
+              {roundsStarted && !canAdvance && !canFinalize && (
                 <p className="text-muted text-sm text-center">
                   Regista os resultados da ronda {maxRound} para continuar
                 </p>
+              )}
+              {/* Sair mais cedo — disponível assim que houver pelo menos um resultado guardado */}
+              {roundsStarted && !canFinalize && anyScoreSaved && (
+                <PrimaryButton variant="danger" onClick={() => handleFinalize(true)} disabled={busy} className="w-full">
+                  <Trophy size={19} />
+                  {busy ? 'A finalizar…' : 'Terminar Mix'}
+                </PrimaryButton>
               )}
             </div>
           )}
