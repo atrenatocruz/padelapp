@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
-import { Plus, Calendar, Users, Trash2, Edit2, Check, X } from 'lucide-react'
+import { Plus, Calendar, Users, Trash2, Edit2, Check, X, UserX } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../contexts/AuthContext'
 import { totalRounds, FORMAT_LABEL } from '../lib/mixLogic'
 
 const COURT_TIMES = [
@@ -54,6 +55,7 @@ function Segmented({ options, value, onChange }) {
 }
 
 export default function Admin() {
+  const { profile: currentUser } = useAuth()
   const [activeTab, setActiveTab] = useState('games') // 'games', 'members', 'settings'
   const [games, setGames] = useState([])
   const [members, setMembers] = useState([])
@@ -234,6 +236,23 @@ export default function Admin() {
     } catch (error) {
       console.error('Error updating admin status:', error)
       alert('Erro ao atualizar permissões')
+    }
+  }
+
+  const handleDeleteUser = async (member) => {
+    if (!confirm(
+      `Remover ${member.name} permanentemente?\n\n` +
+      `Isto apaga a conta e todo o histórico deste jogador (inscrições, duplas, estatísticas). ` +
+      `Não pode ser revertido.`
+    )) return
+
+    try {
+      const { error } = await supabase.rpc('admin_delete_user', { p_user_id: member.id })
+      if (error) throw error
+      loadMembers()
+    } catch (error) {
+      console.error('Error deleting user:', error)
+      alert('Erro ao remover utilizador: ' + error.message)
     }
   }
 
@@ -542,34 +561,34 @@ export default function Admin() {
                       {member.name.charAt(0).toUpperCase()}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-extrabold text-court-900 truncate flex items-center gap-2">
+                      <h3 className="font-extrabold text-court-900 truncate flex items-center gap-1.5">
                         <span className="truncate">{member.name}</span>
                         {member.is_admin && (
-                          <span className="text-[10px] uppercase tracking-wide bg-volt-400 text-court-900 px-2 py-0.5 rounded-full shrink-0">
-                            Admin
-                          </span>
+                          <span className="w-2 h-2 rounded-full bg-volt-500 shrink-0" title="Admin" />
                         )}
                       </h3>
                       <p className="text-sm text-muted truncate">
                         Nível: {member.level} • {member.phone || 'Sem contacto'}
                       </p>
-                      {member.player_stats?.[0] && (
-                        <p className="text-sm text-muted/80 truncate">
-                          {member.player_stats[0].games_played} jogos • {member.player_stats[0].games_won} vitórias
-                        </p>
-                      )}
                     </div>
 
-                    <button
-                      onClick={() => handleToggleAdmin(member.id, member.is_admin)}
-                      className={`shrink-0 whitespace-nowrap text-sm font-extrabold px-3.5 py-2 min-h-[44px] rounded-full transition-colors duration-fast ${
-                        member.is_admin
-                          ? 'bg-danger/10 text-danger hover:bg-danger/15'
-                          : 'bg-court-100 text-court-700 hover:bg-court-200'
-                      }`}
-                    >
-                      {member.is_admin ? 'Remover' : 'Tornar admin'}
-                    </button>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        onClick={() => handleToggleAdmin(member.id, member.is_admin)}
+                        className="whitespace-nowrap text-xs font-extrabold px-3 py-2 min-h-[44px] rounded-full bg-court-100 text-court-700 hover:bg-court-200 transition-colors duration-fast"
+                      >
+                        {member.is_admin ? 'Retirar admin' : 'Tornar admin'}
+                      </button>
+                      {member.id !== currentUser?.id && (
+                        <button
+                          onClick={() => handleDeleteUser(member)}
+                          title={`Eliminar ${member.name}`}
+                          className="w-10 h-10 flex items-center justify-center rounded-full text-danger hover:bg-danger/10 transition-colors duration-fast"
+                        >
+                          <UserX size={19} />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}
