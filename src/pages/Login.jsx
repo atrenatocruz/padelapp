@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { PrimaryButton } from '../components/ui'
+import { PrimaryButton, DateField } from '../components/ui'
 import { Wordmark } from '../components/Layout'
 
 export default function Login() {
@@ -241,11 +241,10 @@ export default function Login() {
 
               <div>
                 <label className={inputLabel}>Data de nascimento</label>
-                <input
-                  type="date"
+                <DateField
                   value={signupBirthday}
-                  onChange={(e) => setSignupBirthday(e.target.value)}
-                  className="input-field"
+                  onChange={setSignupBirthday}
+                  max={new Date().toISOString().slice(0, 10)}
                   required
                 />
               </div>

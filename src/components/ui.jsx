@@ -1,5 +1,58 @@
 import { Link } from 'react-router-dom'
-import { MapPin, CheckCircle2, ChevronRight, Lock, Play } from 'lucide-react'
+import { MapPin, CheckCircle2, ChevronRight, Lock, Play, Calendar } from 'lucide-react'
+
+/* ─── Date fields ────────────────────────────────────────────────────────
+   Native <input type=date/datetime-local> pickers render in the device
+   locale (English months on many phones) and look inconsistent. These wrap
+   the native picker in a styled, always-Portuguese display: the visible box
+   shows a pt-PT formatted value; a transparent native input on top opens the
+   OS picker and holds the value. Best of both — native UX, our formatting. */
+
+export function DateField({ value, onChange, required, max, min, placeholder = 'Seleciona a data' }) {
+  const display = value
+    ? new Date(value + 'T00:00:00').toLocaleDateString('pt-PT', { day: '2-digit', month: 'long', year: 'numeric' })
+    : placeholder
+  return (
+    <div className="relative">
+      <div className={`input-field flex items-center justify-between ${value ? 'text-court-900' : 'text-muted'}`}>
+        <span className="truncate">{display}</span>
+        <Calendar size={18} className="text-court-600 shrink-0 ml-2" />
+      </div>
+      <input
+        type="date"
+        value={value || ''}
+        max={max}
+        min={min}
+        required={required}
+        onChange={(e) => onChange(e.target.value)}
+        aria-label="Data"
+        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+      />
+    </div>
+  )
+}
+
+export function DateTimeField({ value, onChange, required, placeholder = 'Seleciona data e hora' }) {
+  const display = value
+    ? new Date(value).toLocaleString('pt-PT', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+    : placeholder
+  return (
+    <div className="relative">
+      <div className={`input-field flex items-center justify-between ${value ? 'text-court-900' : 'text-muted'}`}>
+        <span className="truncate">{display}</span>
+        <Calendar size={18} className="text-court-600 shrink-0 ml-2" />
+      </div>
+      <input
+        type="datetime-local"
+        value={value || ''}
+        required={required}
+        onChange={(e) => onChange(e.target.value)}
+        aria-label="Data e hora"
+        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+      />
+    </div>
+  )
+}
 
 /* ════════════════════════════════════════════════════════════════════════
    UI kit — Os Padeleiros
@@ -97,18 +150,22 @@ export function GuestBadge({ size = 'sm' }) {
 }
 
 /* ─── PlayerAvatarRow ────────────────────────────────────────────────────
-   Filled initials + dashed empty slots + count. Slots visible at a glance. */
-export function PlayerAvatarRow({ players = [], max = 4, size = 'md' }) {
+   Filled initials + dashed empty slots + count. Slots visible at a glance.
+   Caps visible avatars (cap) with a +N chip so wide games stay compact. */
+export function PlayerAvatarRow({ players = [], max = 4, size = 'md', cap = 6 }) {
   const dim = size === 'sm' ? 'w-7 h-7 text-[11px]' : 'w-9 h-9 text-sm'
-  const empty = Math.max(0, max - players.length)
+  const shown = players.slice(0, cap)
+  const overflow = players.length - shown.length
+  // only show empty slots when nothing is hidden (small games)
+  const empty = overflow > 0 ? 0 : Math.max(0, Math.min(max - players.length, cap - shown.length))
   return (
     <div className="flex items-center gap-2.5">
       <div className="flex -space-x-2">
-        {players.slice(0, max).map((p, i) => (
+        {shown.map((p, i) => (
           <div
             key={p.id || i}
             title={p.name}
-            style={{ zIndex: max - i }}
+            style={{ zIndex: cap - i }}
             className={`${dim} relative rounded-full bg-court-600 text-white font-extrabold
                         flex items-center justify-center ring-2 ring-surface`}
           >
@@ -122,6 +179,12 @@ export function PlayerAvatarRow({ players = [], max = 4, size = 'md' }) {
                         bg-sand ring-2 ring-surface`}
           />
         ))}
+        {overflow > 0 && (
+          <div className={`${dim} relative rounded-full bg-court-100 text-court-700 font-extrabold
+                          flex items-center justify-center ring-2 ring-surface`}>
+            +{overflow}
+          </div>
+        )}
       </div>
       <span className="text-sm font-extrabold text-court-900 tabular-nums">
         {players.length}<span className="text-muted font-normal">/{max}</span>
@@ -224,18 +287,18 @@ export function MixCard({ game, joined = false }) {
         </p>
       )}
 
-      <div className="flex items-center justify-between pt-3 border-t border-line">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 pt-3 border-t border-line">
+        <div className="flex items-center gap-3 min-w-0">
           <PlayerAvatarRow players={players} max={game.max_players} size="sm" />
           {range && <LevelBadge range={range} />}
         </div>
         {game.status === 'open' && !joined && !isFull && (
-          <span className="inline-flex items-center gap-0.5 text-court-600 text-sm font-extrabold">
+          <span className="ml-auto inline-flex items-center gap-0.5 text-court-600 text-sm font-extrabold">
             Jogar <ChevronRight size={17} />
           </span>
         )}
         {isClosed && !isLive && !isDone && (
-          <span className="inline-flex items-center gap-1.5 bg-ok/10 text-ok text-[11px] font-extrabold px-2.5 py-1 rounded-full">
+          <span className="ml-auto inline-flex items-center gap-1.5 bg-ok/10 text-ok text-[11px] font-extrabold px-2.5 py-1 rounded-full">
             <Lock size={13} className="shrink-0" /> Mix fechado — campo reservado
           </span>
         )}

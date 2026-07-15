@@ -574,19 +574,19 @@ export default function GameDetails() {
           </div>
         </div>
 
-        <div className="flex items-center justify-between mt-5 pt-4 border-t border-line">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 mt-5 pt-4 border-t border-line">
           <PlayerAvatarRow
             players={people.map(p => ({ id: p.id, name: p.name }))}
             max={capacity}
           />
           {showClosed && (
-            <span className="inline-flex items-center gap-1.5 bg-ok/10 text-ok text-xs font-extrabold px-3 py-1.5 rounded-full">
-              <Lock size={14} /> Mix fechado — campo reservado
+            <span className="ml-auto inline-flex items-center gap-1.5 bg-ok/10 text-ok text-xs font-extrabold px-3 py-1.5 rounded-full">
+              <Lock size={14} className="shrink-0" /> Mix fechado — campo reservado
             </span>
           )}
           {game.status === 'in_progress' && (
-            <span className="inline-flex items-center gap-1.5 bg-volt-400 text-court-900 text-xs font-extrabold px-3 py-1.5 rounded-full">
-              <Play size={14} /> A decorrer
+            <span className="ml-auto inline-flex items-center gap-1.5 bg-volt-400 text-court-900 text-xs font-extrabold px-3 py-1.5 rounded-full">
+              <Play size={14} className="shrink-0" /> A decorrer
             </span>
           )}
         </div>
@@ -733,51 +733,52 @@ export default function GameDetails() {
                   {ms.map(m => {
                     const done = !!m.winner_team_id
                     const s = scores[m.id] || { a: '', b: '' }
+                    const editable = !done && isAdmin && game.status === 'in_progress'
+                    // one row per dupla — full-width names, no truncation
+                    const teamRow = (teamId, scoreVal, scoreKey) => {
+                      const isWinner = done && m.winner_team_id === teamId
+                      return (
+                        <div className={`flex items-center gap-3 rounded-ctrl px-3 py-2.5 ${
+                          isWinner ? 'bg-volt-400/25' : 'bg-surface'
+                        }`}>
+                          <span className={`flex-1 min-w-0 text-sm font-extrabold ${
+                            done && !isWinner ? 'text-muted' : 'text-court-900'
+                          }`}>
+                            {teamName(teamId)}
+                            {isWinner && <span className="ml-1.5 text-volt-500">🏆</span>}
+                          </span>
+                          {done ? (
+                            <span className={`text-xl font-extrabold tabular-nums shrink-0 ${
+                              isWinner ? 'text-court-900' : 'text-muted'
+                            }`}>
+                              {scoreVal}
+                            </span>
+                          ) : editable ? (
+                            <input
+                              type="number" min="0" inputMode="numeric"
+                              value={s[scoreKey]}
+                              onChange={e => setScores(prev => ({ ...prev, [m.id]: { ...s, [scoreKey]: e.target.value } }))}
+                              className="w-16 px-2 py-2 text-center text-lg font-extrabold rounded-ctrl border border-line bg-surface shrink-0"
+                              placeholder="0"
+                            />
+                          ) : null}
+                        </div>
+                      )
+                    }
                     return (
-                      <div key={m.id} className="rounded-ctrl bg-sand p-3">
-                        <p className="text-[11px] font-extrabold uppercase tracking-widest text-muted mb-1.5">
+                      <div key={m.id} className="rounded-ctrl bg-sand p-2.5">
+                        <p className="text-[11px] font-extrabold uppercase tracking-widest text-muted mb-2 px-1">
                           Campo {m.court_number}
                         </p>
-                        <div className="flex items-center gap-2">
-                          <span className={`flex-1 text-sm font-extrabold truncate ${done && m.winner_team_id === m.team_a_id ? 'text-court-900' : done ? 'text-muted' : 'text-court-900'}`}>
-                            {teamName(m.team_a_id)}
-                          </span>
-
-                          {done ? (
-                            <span className="font-extrabold text-court-900 tabular-nums px-2">
-                              {m.score_a} – {m.score_b}
-                            </span>
-                          ) : isAdmin && game.status === 'in_progress' ? (
-                            <span className="flex items-center gap-1.5">
-                              <input
-                                type="number" min="0" inputMode="numeric"
-                                value={s.a}
-                                onChange={e => setScores(prev => ({ ...prev, [m.id]: { ...s, a: e.target.value } }))}
-                                className="w-14 px-2 py-2 text-center font-extrabold rounded-ctrl border border-line bg-surface"
-                                placeholder="0"
-                              />
-                              <span className="text-muted">–</span>
-                              <input
-                                type="number" min="0" inputMode="numeric"
-                                value={s.b}
-                                onChange={e => setScores(prev => ({ ...prev, [m.id]: { ...s, b: e.target.value } }))}
-                                className="w-14 px-2 py-2 text-center font-extrabold rounded-ctrl border border-line bg-surface"
-                                placeholder="0"
-                              />
-                            </span>
-                          ) : (
-                            <span className="text-muted text-sm px-2">vs</span>
-                          )}
-
-                          <span className={`flex-1 text-sm font-extrabold truncate text-right ${done && m.winner_team_id === m.team_b_id ? 'text-court-900' : done ? 'text-muted' : 'text-court-900'}`}>
-                            {teamName(m.team_b_id)}
-                          </span>
+                        <div className="space-y-1.5">
+                          {teamRow(m.team_a_id, m.score_a, 'a')}
+                          {teamRow(m.team_b_id, m.score_b, 'b')}
                         </div>
 
-                        {!done && isAdmin && game.status === 'in_progress' && s.a !== '' && s.b !== '' && (
+                        {editable && s.a !== '' && s.b !== '' && (
                           <button
                             onClick={() => handleSaveScore(m)}
-                            className="mt-2.5 w-full py-2 rounded-ctrl bg-court-900 text-volt-400 text-sm font-extrabold transition-all duration-fast active:scale-[0.98]"
+                            className="mt-2.5 w-full py-2.5 rounded-ctrl bg-court-900 text-volt-400 text-sm font-extrabold transition-all duration-fast active:scale-[0.98]"
                           >
                             Guardar resultado
                           </button>

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { User, Award, Trophy, Target, Flame, LogOut } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
-import { PrimaryButton, LevelBadge, GuestBadge } from '../components/ui'
+import { PrimaryButton, LevelBadge, GuestBadge, DateField } from '../components/ui'
 
 export default function Profile() {
   const { profile, updateProfile, isGuest, signOut } = useAuth()
@@ -199,11 +199,10 @@ export default function Profile() {
 
             <div>
               <label className={inputLabel}>Data de nascimento</label>
-              <input
-                type="date"
+              <DateField
                 value={birthday}
-                onChange={(e) => setBirthday(e.target.value)}
-                className="input-field"
+                onChange={setBirthday}
+                max={new Date().toISOString().slice(0, 10)}
               />
             </div>
 

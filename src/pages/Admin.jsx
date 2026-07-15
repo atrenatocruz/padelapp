@@ -2,7 +2,14 @@ import { useState, useEffect } from 'react'
 import { Plus, Calendar, Users, Trash2, Edit2, Check, X, UserX } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
+import { DateTimeField } from '../components/ui'
 import { totalRounds, FORMAT_LABEL } from '../lib/mixLogic'
+
+// datetime-local <-> stored timestamptz helpers (keeps Portugal wall-clock)
+const toLocalInput = (d) => {
+  const dt = new Date(d)
+  return new Date(dt.getTime() - dt.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
+}
 
 const COURT_TIMES = [
   { value: 60, label: '1h' },
@@ -161,6 +168,8 @@ export default function Admin() {
         .insert([
           {
             ...gameForm,
+            // datetime-local is Portugal wall-clock; store the real instant
+            date: new Date(gameForm.date).toISOString(),
             max_players: gameForm.num_courts * 4, // derived
             created_by: user.id,
             status: 'open'
@@ -189,7 +198,11 @@ export default function Admin() {
     try {
       const { error } = await supabase
         .from('games')
-        .update({ ...gameForm, max_players: gameForm.num_courts * 4 })
+        .update({
+          ...gameForm,
+          date: new Date(gameForm.date).toISOString(),
+          max_players: gameForm.num_courts * 4,
+        })
         .eq('id', editingGame.id)
 
       if (error) throw error
@@ -291,7 +304,7 @@ export default function Admin() {
     setEditingGame(game)
     setGameForm({
       title: game.title,
-      date: new Date(game.date).toISOString().slice(0, 16),
+      date: toLocalInput(game.date),
       location: game.location || '',
       num_courts: game.num_courts || 1,
       court_time_minutes: game.court_time_minutes || 90,
@@ -385,11 +398,9 @@ export default function Admin() {
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Data e hora
                       </label>
-                      <input
-                        type="datetime-local"
+                      <DateTimeField
                         value={gameForm.date}
-                        onChange={(e) => setGameForm({ ...gameForm, date: e.target.value })}
-                        className="input-field"
+                        onChange={(v) => setGameForm({ ...gameForm, date: v })}
                         required
                       />
                     </div>
