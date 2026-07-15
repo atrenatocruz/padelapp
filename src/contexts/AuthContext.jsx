@@ -109,13 +109,12 @@ export const AuthProvider = ({ children }) => {
     return { data, error }
   }
 
-  // Guest entry: anonymous Supabase session + auto-created profile
-  // with is_guest = true (set by the handle_new_user trigger).
-  const signInAsGuest = async (name) => {
-    const { data, error } = await supabase.auth.signInAnonymously({
+  const signInWithGoogle = async () => {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
       options: {
-        data: { name },
-      }
+        redirectTo: window.location.origin,
+      },
     })
     return { data, error }
   }
@@ -168,7 +167,7 @@ export const AuthProvider = ({ children }) => {
     isGuest: profile?.is_guest === true,
     signUp,
     signIn,
-    signInAsGuest,
+    signInWithGoogle,
     signInAsAdmin,
     signOut,
     updateProfile,
