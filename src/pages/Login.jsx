@@ -41,6 +41,7 @@ export default function Login() {
   // Signup form state
   const [signupEmail, setSignupEmail] = useState('')
   const [signupName, setSignupName] = useState('')
+  const [signupPhone, setSignupPhone] = useState('')
   const [signupBirthday, setSignupBirthday] = useState('')
   const [signupGender, setSignupGender] = useState('')
   const [signupPassword, setSignupPassword] = useState('')
@@ -81,9 +82,17 @@ export default function Login() {
       return
     }
 
+    // Validate phone (tolerant of spaces/dashes/country code — just needs a real number in there)
+    if (signupPhone.replace(/\D/g, '').length < 9) {
+      setError('Introduz um número de telemóvel válido')
+      setLoading(false)
+      return
+    }
+
     try {
       const { error } = await signUp(signupEmail, signupPassword, {
         name: signupName,
+        phone: signupPhone,
         birthday: signupBirthday,
         gender: signupGender,
       })
@@ -255,6 +264,19 @@ export default function Login() {
                   placeholder="nome@exemplo.pt"
                   required
                 />
+              </div>
+
+              <div>
+                <label className={inputLabel}>Nº de telemóvel</label>
+                <input
+                  type="tel"
+                  value={signupPhone}
+                  onChange={(e) => setSignupPhone(e.target.value)}
+                  className="input-field"
+                  placeholder="912 345 678"
+                  required
+                />
+                <p className="text-xs text-muted mt-1.5">Usado para o bot do WhatsApp reconhecer-te no grupo</p>
               </div>
 
               <div>

@@ -13,6 +13,7 @@ const MOCK_ADMIN_PROFILE = {
   id: '00000000-0000-0000-0000-000000000000',
   email: 'admin@dev.local',
   name: 'Admin (Dev)',
+  phone: '000000000', // dummy — skips the mandatory-phone modal for the dev bypass
   gender: 'masculino',
   level: 'avançado',
   is_admin: true,

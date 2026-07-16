@@ -1,7 +1,68 @@
+import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { Home, Trophy, User, Settings, LogOut, HelpCircle } from 'lucide-react'
+import { Home, Trophy, User, Settings, LogOut, HelpCircle, Phone } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
-import { LevelBadge } from './ui'
+import { LevelBadge, PrimaryButton } from './ui'
+
+/* Blocking modal — no close button, no click-outside-to-dismiss. Shown
+   whenever a real (non-guest) member's profile has no phone number, since
+   the WhatsApp bot needs it to recognize them in the group. Covers Google
+   sign-ins (Google never provides a phone) and any older account created
+   before phone became a required signup field. */
+function PhoneRequiredModal({ onSave }) {
+  const [phone, setPhone] = useState('')
+  const [error, setError] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    if (phone.replace(/\D/g, '').length < 9) {
+      setError('Introduz um número de telemóvel válido')
+      return
+    }
+    setSaving(true)
+    setError('')
+    const { error: saveError } = await onSave(phone)
+    if (saveError) {
+      setError('Não foi possível guardar. Tenta novamente.')
+      setSaving(false)
+    }
+    // on success the parent's `profile.phone` updates and this modal unmounts
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-court-900/70 animate-fade-in">
+      <div className="bg-surface rounded-t-card sm:rounded-card shadow-lift w-full sm:max-w-md p-6 animate-pop">
+        <div className="w-11 h-11 rounded-full bg-volt-400/15 text-volt-600 flex items-center justify-center mb-4">
+          <Phone size={20} />
+        </div>
+        <h3 className="text-lg text-court-900 mb-1.5">Falta o teu nº de telemóvel</h3>
+        <p className="text-sm text-muted mb-5">
+          Precisamos dele para te reconhecer no grupo de WhatsApp (para poderes escrever "In"/"Out" nos mixes). Sem isto não dá para continuar.
+        </p>
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <input
+            type="tel"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            className="input-field"
+            placeholder="912 345 678"
+            autoFocus
+            required
+          />
+          {error && (
+            <div className="bg-danger/10 text-danger px-4 py-3 rounded-ctrl text-sm font-extrabold">
+              {error}
+            </div>
+          )}
+          <PrimaryButton type="submit" disabled={saving} className="w-full">
+            {saving ? 'A guardar…' : 'Guardar'}
+          </PrimaryButton>
+        </form>
+      </div>
+    </div>
+  )
+}
 
 /* Brand wordmark — the "." in padel.app is the ball */
 export function Wordmark({ className = '' }) {
@@ -17,7 +78,9 @@ export function Wordmark({ className = '' }) {
 export default function Layout({ children }) {
   const location = useLocation()
   const navigate = useNavigate()
-  const { signOut, profile } = useAuth()
+  const { signOut, profile, updateProfile } = useAuth()
+
+  const needsPhone = profile && !profile.is_guest && !profile.phone
 
   const handleSignOut = async () => {
     await signOut()
@@ -116,6 +179,10 @@ export default function Layout({ children }) {
           })}
         </div>
       </nav>
+
+      {needsPhone && (
+        <PhoneRequiredModal onSave={(phone) => updateProfile({ phone })} />
+      )}
     </div>
   )
 }
