@@ -1,16 +1,15 @@
-import { supabase } from './supabase.js'
 import { getSettings } from './settings.js'
-import { loadGame, buildRosterMessage, getOpenMixes } from './roster.js'
+import { supabase } from './supabase.js'
+import { loadGame, getOpenMixes, buildCombinedRosterMessage } from './roster.js'
 import { HELP_FOOTER } from './messages.js'
 
 const DEBOUNCE_MS = 4000
 const RECONCILE_INTERVAL_MS = 60 * 1000
 
-// Keyed by game_id — several mixes can be open at once, each with its own
-// independent debounce/dedupe state, so one mix's repost never clobbers
-// another's.
-const debounceTimers = new Map()
-const lastPostedHashes = new Map()
+// A single debounce/dedupe pair — the group only ever gets ONE roster
+// message covering every open mix at once, not one message per mix.
+let debounceTimer = null
+let lastPostedHash = null
 
 function hash(str) {
   let h = 0
@@ -20,49 +19,37 @@ function hash(str) {
   return h
 }
 
-async function postRoster(sendText, gameId) {
+async function postCombinedRoster(sendText) {
   const settings = await getSettings()
   if (!settings.whatsapp_group_jid) return
 
-  const state = await loadGame(gameId)
-  const text = buildRosterMessage(state)
+  const openMixes = await getOpenMixes()
+  const mixStates = await Promise.all(openMixes.map((mix) => loadGame(mix.id)))
+  const text = buildCombinedRosterMessage(mixStates)
+  if (!text) return // nothing open right now — nothing to broadcast
+
   const nextHash = hash(text)
-  if (nextHash === lastPostedHashes.get(gameId)) return
+  if (nextHash === lastPostedHash) return
 
   await sendText(settings.whatsapp_group_jid, text)
-  lastPostedHashes.set(gameId, nextHash)
+  lastPostedHash = nextHash
 }
 
-function scheduleRepost(sendText, gameId) {
-  const existingTimer = debounceTimers.get(gameId)
-  if (existingTimer) clearTimeout(existingTimer)
-
-  const timer = setTimeout(() => {
-    debounceTimers.delete(gameId)
-    postRoster(sendText, gameId).catch((err) => console.error(`Failed to repost roster for mix ${gameId}:`, err))
+function scheduleRepost(sendText) {
+  if (debounceTimer) clearTimeout(debounceTimer)
+  debounceTimer = setTimeout(() => {
+    debounceTimer = null
+    postCombinedRoster(sendText).catch((err) => console.error('Failed to repost combined roster:', err))
   }, DEBOUNCE_MS)
-  debounceTimers.set(gameId, timer)
 }
 
-async function isOpenMix(gameId) {
-  const { data, error } = await supabase
-    .from('games')
-    .select('status, date')
-    .eq('id', gameId)
-    .single()
-  if (error || !data) return false
-  return (data.status === 'open' || data.status === 'closed') && new Date(data.date).getTime() > Date.now()
-}
-
-/** Wires Supabase Realtime so any participant/game change — from the app OR from the bot's own WhatsApp-driven writes, for ANY currently open mix — results in a fresh roster repost for that specific mix. */
+/** Wires Supabase Realtime so any game/participant change — from the app OR from the bot's own WhatsApp-driven writes, for ANY currently open mix — results in a fresh combined roster repost covering every open mix. */
 export function startSync({ sendText }) {
   supabase
     .channel('whatsapp-bot-games')
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'games' }, async (payload) => {
-      const game = payload.new
-      if (game.status !== 'open') return
-      lastPostedHashes.delete(game.id)
-      scheduleRepost(sendText, game.id)
+      if (payload.new.status !== 'open') return
+      scheduleRepost(sendText)
     })
     .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'games' }, async (payload) => {
       const settings = await getSettings()
@@ -74,40 +61,27 @@ export function startSync({ sendText }) {
           settings.whatsapp_group_jid,
           `🤖 O mix "${payload.new.title}" foi cancelado ❌${HELP_FOOTER}`
         )
-        return
       }
-      scheduleRepost(sendText, payload.new.id)
+      // Refresh the combined view either way (drops the cancelled mix,
+      // or reflects whatever else changed).
+      scheduleRepost(sendText)
     })
     .subscribe()
 
   supabase
     .channel('whatsapp-bot-participants')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'participants' }, async (payload) => {
-      const row = payload.new?.game_id ? payload.new : payload.old
-      if (!row?.game_id) return
-      if (!(await isOpenMix(row.game_id))) return
-      scheduleRepost(sendText, row.game_id)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'participants' }, () => {
+      // Always recomputed fresh from the DB at post time, and the hash
+      // check above skips a no-op send — no need to pre-filter which
+      // mix this row belongs to.
+      scheduleRepost(sendText)
     })
     .subscribe()
 
   // Safety net: catches any change missed during a transient Realtime
-  // disconnect, without spamming (only reposts if a mix's roster actually
-  // differs from what was last sent). Reconciles every currently open mix
-  // independently so one failing lookup doesn't block the rest.
-  setInterval(async () => {
-    let openMixes
-    try {
-      openMixes = await getOpenMixes()
-    } catch (err) {
-      console.error('Reconciliation tick failed to load open mixes:', err)
-      return
-    }
-    for (const mix of openMixes) {
-      try {
-        await postRoster(sendText, mix.id)
-      } catch (err) {
-        console.error(`Reconciliation failed for mix ${mix.id}:`, err)
-      }
-    }
+  // disconnect, without spamming (only reposts if the combined roster
+  // actually differs from what was last sent).
+  setInterval(() => {
+    postCombinedRoster(sendText).catch((err) => console.error('Reconciliation tick failed:', err))
   }, RECONCILE_INTERVAL_MS)
 }

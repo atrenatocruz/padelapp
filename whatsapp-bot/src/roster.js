@@ -86,8 +86,8 @@ export function formatDateTime(isoDate) {
   return `${datePart} · ${timePart}`
 }
 
-/** Builds the roster text posted to the group — a new message every time, never an edit, matching the reference bot's behavior. */
-export function buildRosterMessage({ game, people, capacity }) {
+/** Builds one mix's block of text (no footer — footer is added once for the whole combined message). */
+function buildMixBlock({ game, people, capacity }) {
   const isCancelled = game.status === 'cancelled'
   const lines = []
 
@@ -109,11 +109,28 @@ export function buildRosterMessage({ game, people, capacity }) {
     if (people.length >= capacity) {
       lines.push('✅ *Mix completo!*')
     } else {
-      lines.push('🙋 Responde *In* para entrar, *Out* para sair')
+      lines.push(`🙋 Escreve *In ${game.short_code}* para entrares, *Out ${game.short_code}* para saíres`)
     }
   }
 
   lines.push(`🔗 ${config.appUrl}/jogo/${game.id}`)
 
-  return lines.join('\n') + HELP_FOOTER
+  return lines.join('\n')
+}
+
+const MIX_SEPARATOR = '\n\n➖➖➖➖➖➖➖➖➖➖\n\n'
+
+/**
+ * Builds ONE message covering every currently open mix — a new message
+ * every time, never an edit, matching the reference bot's behavior. Each
+ * mix gets its own block (see buildMixBlock); returns null when there's
+ * nothing to show (caller should skip sending in that case).
+ */
+export function buildCombinedRosterMessage(mixStates) {
+  if (mixStates.length === 0) return null
+
+  const header = mixStates.length > 1 ? `📋 *Mixes abertos (${mixStates.length})*\n\n` : ''
+  const blocks = mixStates.map(buildMixBlock).join(MIX_SEPARATOR)
+
+  return header + blocks + HELP_FOOTER
 }
