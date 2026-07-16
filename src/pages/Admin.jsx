@@ -237,10 +237,10 @@ export default function Admin() {
 
   const handleToggleAdmin = async (userId, currentStatus) => {
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ is_admin: !currentStatus })
-        .eq('id', userId)
+      const { error } = await supabase.rpc('admin_set_admin', {
+        p_user_id: userId,
+        p_is_admin: !currentStatus,
+      })
 
       if (error) throw error
 
@@ -248,7 +248,7 @@ export default function Admin() {
       loadMembers()
     } catch (error) {
       console.error('Error updating admin status:', error)
-      alert('Erro ao atualizar permissões')
+      alert('Erro ao atualizar permissões: ' + error.message)
     }
   }
 

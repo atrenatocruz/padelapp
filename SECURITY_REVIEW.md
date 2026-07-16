@@ -4,79 +4,92 @@
 **Âmbito:** revisão completa do projeto (schema SQL/RLS, triggers, funções, autenticação, páginas com escritas na BD, histórico git, dependências).
 **Contexto:** o modelo de segurança desta app assenta 100% nas policies RLS do Supabase — a chave `anon` está no bundle JS e qualquer pessoa pode falar diretamente com a API REST do Supabase, ignorando a UI. Todos os pontos abaixo devem ser avaliados por essa lente.
 
-**Estado:** ⬜ por corrigir · ✅ corrigido
+**Estado:** ⬜ por corrigir · ✅ corrigido · 🔧 corrigido no código, falta ação manual tua
+
+**Validação (2026-07-16):** todos os pontos abaixo foram confirmados diretamente no código antes de corrigir (não foi assumida nenhuma afirmação do relatório original sem verificar). Fixes de SQL estão consolidados em `supabase/migration_security_fixes.sql` — **tens de correr esse ficheiro no SQL Editor do Supabase** para os pontos #1, #2 (mínimo), #3, #7 e #8 terem efeito; nada disto se aplica sozinho.
 
 ---
 
 ## 🔴 Críticas (corrigir antes de ter utilizadores reais)
 
-### 1. ⬜ Qualquer utilizador pode tornar-se admin sozinho
+### 1. ✅ Qualquer utilizador pode tornar-se admin sozinho
 
-A policy `"Users can update own profile"` (`supabase/schema.sql:89`) permite UPDATE à própria linha sem restringir colunas. Como `is_admin` vive na tabela `profiles`, qualquer utilizador autenticado pode correr na consola do browser:
+**Confirmado:** a policy `"Users can update own profile"` (`supabase/schema.sql:89-91`) tem `USING (auth.uid() = id)` sem `WITH CHECK` — em RLS do Postgres, sem `WITH CHECK`, o `USING` serve para ambos, logo não há nenhuma restrição de colunas. Qualquer utilizador autenticado podia de facto correr:
 
 ```js
 await supabase.from('profiles').update({ is_admin: true }).eq('id', meuId)
 ```
 
-e passa a poder apagar utilizadores (`admin_delete_user`), gerir jogos, tudo.
+**Corrigido em `supabase/migration_security_fixes.sql`:**
+- Trigger `prevent_self_admin_escalation` (`BEFORE UPDATE` em `profiles`) bloqueia qualquer mudança a `is_admin`/`is_guest` feita por quem não é já admin.
+- Nova RPC `admin_set_admin(p_user_id, p_is_admin)`, `SECURITY DEFINER` com guard de admin (mesmo estilo do `admin_delete_user` já existente), com proteção extra contra um admin remover a própria permissão sozinho.
+- `src/pages/Admin.jsx` `handleToggleAdmin` atualizado para chamar esta RPC em vez do UPDATE direto que **confirmei estar mesmo partido** para outros utilizadores (0 linhas afetadas, sem erro, exatamente como o relatório apontava).
 
-**Fix pragmático:** trigger `BEFORE UPDATE` em `profiles` que faz `RAISE EXCEPTION` se `is_admin` (ou `is_guest`) mudar e o chamador não for admin. ~10 linhas de SQL, custo zero.
+🔧 **Falta fazer:** correr `supabase/migration_security_fixes.sql` no SQL Editor do Supabase.
 
-**Nota relacionada:** o botão "Tornar admin" em `src/pages/Admin.jsx:242` hoje **falha silenciosamente** para outros utilizadores — não existe policy que deixe um admin atualizar perfis de terceiros (0 linhas afetadas, sem erro). Ou seja, a única forma de promover admins que funciona é a própria falha acima. O fix correto é um RPC `SECURITY DEFINER` tipo `admin_set_admin(user_id, valor)` com guard de admin, no mesmo estilo do `admin_delete_user` já existente.
+### 2. 🔧 Dados pessoais de todos os membros expostos publicamente à internet
 
-### 2. ⬜ Dados pessoais de todos os membros expostos publicamente à internet
+**Confirmado:** `"Public profiles are viewable by everyone"` com `USING (true)` (`schema.sql:85-87`) — qualquer pessoa sem login, com a anon key, lia nome, email, telefone, data de nascimento e género de todos os membros.
 
-`"Public profiles are viewable by everyone"` com `USING (true)` (`schema.sql:85`) significa que **qualquer pessoa, sem login**, com a anon key (extraível do bundle em segundos) lê nome, **email, telefone, data de nascimento e género** de todos os membros. Para uma app com dados pessoais na UE isto é diretamente um problema de RGPD. A nota no `migration_guests.sql` justificava isto pelos convidados, mas o guest login já foi removido.
+**Corrigido (nível mínimo) em `supabase/migration_security_fixes.sql`:** a policy passa a `USING (auth.uid() IS NOT NULL)` — só membros autenticados veem perfis. Verifiquei todos os pontos do frontend que leem `profiles` (`AuthContext.jsx`, `Admin.jsx`, `Rankings.jsx`, `PlayerDetails.jsx`, `GameDetails.jsx`) — todos correm depois de login, nenhum depende de leitura anónima, por isso este fix não parte nada.
 
-**Fix pragmático (2 níveis):**
-
-- **Mínimo:** mudar o SELECT para `USING (auth.uid() IS NOT NULL)` — só membros autenticados veem perfis.
-- **Ideal (barato):** manter `email/phone/birthday` visíveis só ao próprio (`auth.uid() = id`) e criar uma view `profiles_public` (id, name, level, gender, preferred_side, is_guest) para tudo o que a app mostra sobre os outros. Requer ajustar os selects no frontend — trabalho de uma tarde.
+🔧 **Falta fazer:**
+1. Correr `supabase/migration_security_fixes.sql`.
+2. **Nível ideal, não aplicado automaticamente:** manter `email/phone/birthday` visíveis só ao próprio e criar uma view `profiles_public` (id, name, level, gender, preferred_side, is_guest) para o resto da app. Não fiz isto sozinho porque implica rever e ajustar todos os `select()` de `profiles` no frontend um por um — risco de partir algo silenciosamente sem testar cada página. Recomendo pedires isto como tarefa dedicada quando quiseres avançar (é o "trabalho de uma tarde" que o relatório original já estimava).
 
 ---
 
 ## 🟠 Altas
 
-### 3. ⬜ Bug de scoping na policy de resultados
+### 3. 🔧 Bug de scoping na policy de resultados
 
-Em `schema.sql:161`, `WHERE participants.game_id = game_id` compara a coluna consigo própria (o `game_id` não qualificado resolve para o da própria tabela `participants`), logo é sempre verdade: qualquer utilizador que participe em *qualquer* jogo pode submeter resultados para *todos* os jogos.
+**Confirmado exatamente como descrito:** em `schema.sql:161` (dentro da policy `"Participants and admins can submit results"`), `WHERE participants.game_id = game_id` — o `game_id` não qualificado, dentro da subquery sobre `participants`, resolve para `participants.game_id` (a tabela mais interna no escopo), não para o `game_id` da linha a inserir em `results`. Condição sempre verdadeira: qualquer utilizador que participe em *qualquer* jogo podia submeter resultados para *todos* os jogos.
 
-**Fix:** qualificar como `participants.game_id = results.game_id`.
+**Corrigido em `supabase/migration_security_fixes.sql`:** policy recriada com `participants.game_id = results.game_id`.
+
+🔧 **Falta fazer:** correr `supabase/migration_security_fixes.sql`.
 
 ### 4. ⬜ Desligar "Allow anonymous sign-ins" no dashboard Supabase
 
-O guest login saiu da UI, mas se o toggle ficou ligado, qualquer pessoa cria sessões anónimas via API e passa nos checks `auth.uid() IS NOT NULL` (pode inserir-se em `participants`, por exemplo).
+Não corrigido por mim — é um toggle no dashboard, não código. Da última vez que vi o painel de Authentication, este toggle estava desligado, mas **confirma tu mesmo** (não tenho acesso automatizado ao dashboard para verificar o estado atual):
 
-**Fix:** Dashboard → Authentication → Sign In / Providers → desligar "Allow anonymous sign-ins". Um clique.
+**Ação:** Dashboard → Authentication → Sign In / Providers → confirmar que "Allow anonymous sign-ins" está desligado.
 
 ---
 
 ## 🟡 Médias
 
-### 5. ⬜ Dependências vulneráveis
+### 5. ✅ Dependências vulneráveis
 
-`npm audit` reporta 21 vulnerabilidades (13 high), das quais 4 high em produção (`ws`, `@remix-run/router` via react-router 6.20).
+**Confirmado:** `npm audit` reportava exatamente 21 vulnerabilidades (13 high), validando o número do relatório.
 
-**Fix:** `npm audit fix` + subir `react-router-dom` resolve a maioria sem breaking changes; o resto é tooling de dev (vite 5), menos urgente.
+**Corrigido:** corri `npm audit fix` (sem `--force`) — desceu para **3 vulnerabilidades (2 moderate, 1 high)**, todas em `esbuild`/`vite`/`vite-plugin-pwa`, que só têm fix via bump major (vite 5→8). Não fiz esse bump — implica testar o build/dev-server a fundo e não é urgente (é tooling de dev, não corre em produção), exatamente como o relatório original categorizava. Build de produção verificado (`npm run build`) e continua a funcionar sem erros depois do fix aplicado.
 
-### 6. ⬜ Headers de segurança ausentes
+### 6. ✅ Headers de segurança ausentes
 
-O `vercel.json` só tem rewrites.
+**Confirmado:** `vercel.json` só tinha `rewrites`.
 
-**Fix:** adicionar `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin` e HSTS — ~15 linhas de JSON, custo zero. Um CSP básico é bónus (atenção: precisa de permitir Google Fonts e o domínio do Supabase).
+**Corrigido:** adicionados `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin` e `Strict-Transport-Security` (HSTS) em `vercel.json`.
 
-### 7. ⬜ Funções `SECURITY DEFINER` sem `SET search_path`
+**Não fiz o CSP** (mencionado como bónus/opcional no relatório original) — um CSP mal afinado pode partir a app silenciosamente (Google Fonts, o WebSocket do Supabase Realtime, o service worker do PWA) e só se deteta a testar no browser a sério, não só a compilar. Recomendo só ativar depois de testar num preview deploy.
 
-`finalize_mix`, `admin_delete_user`, `handle_new_user`, `check_game_reopen` deviam ter `SET search_path = public` (hardening standard que o próprio linter do Supabase recomenda; evita hijacking via schemas maliciosos).
+### 7. ✅ Funções `SECURITY DEFINER` sem `SET search_path`
 
-### 8. ⬜ Triggers a esbarrar no RLS (bugs funcionais com raiz em segurança)
+**Confirmado:** `finalize_mix`, `admin_delete_user`, `handle_new_user`, `check_game_reopen` não tinham `SET search_path`.
 
-`update_player_stats` e `check_game_full` não são `SECURITY DEFINER`, por isso correm com as permissões do utilizador que os dispara:
+**Corrigido em `supabase/migration_security_fixes.sql`:** `ALTER FUNCTION ... SET search_path = public` nas quatro. Revi o corpo de cada uma para confirmar que não dependem de nenhum schema fora de `public`/`pg_catalog` (este último está sempre implicitamente no search_path do Postgres) — não deviam quebrar nada.
 
-- o INSERT em `player_stats` (que não tem policy de INSERT) faz **falhar a transação inteira** quando um não-admin submete um resultado no fluxo antigo de `results`;
-- o auto-fechar de jogos em `games` falha silenciosamente para não-admins.
+🔧 **Falta fazer:** correr `supabase/migration_security_fixes.sql`.
 
-**Fix:** se o fluxo antigo de `results` ainda é usado, tornar estes triggers `SECURITY DEFINER` (como já foi feito com `check_game_reopen`).
+### 8. ✅ Triggers a esbarrar no RLS (bugs funcionais com raiz em segurança)
+
+**Confirmado, e mais grave na prática do que "correr o fluxo antigo de resultados":** verifiquei que a tabela `results`/`update_player_stats` **não é usada em lado nenhum do frontend atual** (só existe o fluxo novo via `matches`/`finalize_mix`) — por isso essa parte específica é hoje código morto, ainda vale a pena endurecer mas não é um bug ativo.
+
+`check_game_full`, porém, **é um bug ativo agora**: não sendo `SECURITY DEFINER`, corre com as permissões de quem se está a inscrever. Quando um jogador normal (não-admin) completa as vagas de um mix, o `UPDATE games SET status='closed'` é bloqueado silenciosamente pela policy `"Admins can update games"` — **mixes preenchidos por jogadores normais nunca fechavam automaticamente**, só fechavam se por acaso quem desse a última vaga fosse admin.
+
+**Corrigido em `supabase/migration_security_fixes.sql`:** `check_game_full` passa a `SECURITY DEFINER` (mesmo padrão já usado em `check_game_reopen`) + `SET search_path = public`.
+
+🔧 **Falta fazer:** correr `supabase/migration_security_fixes.sql`.
 
 ---
 
@@ -84,11 +97,13 @@ O `vercel.json` só tem rewrites.
 
 ### 9. ⬜ `participants` sem `WITH CHECK` fino
 
-Um utilizador pode inscrever-se já com `status='confirmed'` e atribuir qualquer pessoa como `partner_id` sem consentimento. Num grupo de amigos é aceitável — só corrigir se aparecer abuso.
+Não corrigido — o próprio relatório recomendava deixar isto para depois ("só corrigir se aparecer abuso"), mantenho essa recomendação.
 
 ### 10. ⬜ Configuração do dashboard Supabase
 
-Confirmar email ligado, password mínima ≥ 8 caracteres, e rever os rate limits default de auth. Grátis, só configuração.
+Não corrigido — configuração do dashboard, não código.
+
+**Ação:** confirmar email ligado, password mínima ≥ 8 caracteres, e rever os rate limits default de auth em Authentication → Policies/Rate Limits.
 
 ---
 
@@ -111,3 +126,18 @@ Confirmar email ligado, password mínima ≥ 8 caracteres, e rever os rate limit
 | 4 | #9, #10 | opcional | Endurecimento extra |
 
 Tudo dentro do free tier, sem custos novos.
+
+---
+
+## O que preciso que faças agora
+
+1. **Corre `supabase/migration_security_fixes.sql`** no SQL Editor do Supabase — sem isto, #1, #3, #7 e #8 continuam vulneráveis/partidos, o ficheiro só descreve o fix, não aplica sozinho.
+2. **Confirma o toggle "Allow anonymous sign-ins"** está desligado (#4) — Dashboard → Authentication → Sign In / Providers.
+3. **Rever configuração de auth do dashboard** (#10) — email confirmation, password mínima, rate limits.
+4. Deploy normal do `vercel.json`/`package.json` atualizados (próximo `git push` já trata disto).
+
+Não fiz sozinho (ficam para quando quiseres avançar, não são urgentes):
+- **#2 nível ideal** — view `profiles_public` + ajustar todos os selects do frontend (risco de partir coisas sem testar página a página).
+- **CSP** em #6 — precisa de testar num preview deploy antes de ativar.
+- **#5 resto** — bump major de vite/vite-plugin-pwa.
+- **#9** — deixado como estava, por recomendação do próprio relatório original.
