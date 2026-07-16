@@ -1,0 +1,216 @@
+import { supabase } from './supabase.js'
+import { getSettings } from './settings.js'
+import { loadGame, getOpenMixes, formatDateTime } from './roster.js'
+import { resolveProfileByPhoneJid } from './phone.js'
+import { config } from './config.js'
+import { HELP_TEXT, HELP_FOOTER } from './messages.js'
+
+function stripAccents(str) {
+  return str.normalize('NFD').replace(/[̀-ͯ]/g, '')
+}
+
+const IN_WORDS = ['in', 'dentro', 'estou dentro', 'to dentro', 'tou dentro', 'alinho']
+const OUT_WORDS = ['out', 'fora', 'estou fora', 'saio']
+const HELP_WORDS = ['/help', 'help', 'ajuda', '/ajuda']
+
+/**
+ * Parses one message into { action, code } or null (silently ignored —
+ * covers all normal group chatter). `code`, when present, is a trailing
+ * 4-digit mix code (e.g. "in 1234", "alinho 1234") used to pick a specific
+ * mix when several are open at once; it's optional otherwise.
+ */
+function parseCommand(text) {
+  const normalized = stripAccents(text.trim().toLowerCase())
+
+  if (HELP_WORDS.includes(normalized)) return { action: 'help', code: null }
+  if (IN_WORDS.includes(normalized)) return { action: 'in', code: null }
+  if (OUT_WORDS.includes(normalized)) return { action: 'out', code: null }
+
+  const match = normalized.match(/^(.+) (\d{4})$/)
+  if (match) {
+    const [, word, code] = match
+    if (IN_WORDS.includes(word)) return { action: 'in', code }
+    if (OUT_WORDS.includes(word)) return { action: 'out', code }
+  }
+  return null
+}
+
+const OPEN_STATUSES = new Set(['open', 'closed'])
+
+function formatMixLine(mix) {
+  const location = mix.location ? `, ${mix.location}` : ''
+  return `🆔 *${mix.short_code}* — ${mix.title}, ${formatDateTime(mix.date)}${location}`
+}
+
+/**
+ * Handles one incoming group message. Only acts on exact "in"/"out"/"help"
+ * text, optionally followed by a 4-digit mix code (see parseCommand);
+ * everything else — including all normal group chatter — is silently
+ * ignored.
+ *
+ * Successful joins/leaves don't get an explicit reply here: they write to
+ * `participants`, which sync.js's Realtime subscription picks up and turns
+ * into a fresh roster repost for that specific mix — that repost IS the
+ * confirmation, matching the reference bot's behavior. Only rejections and
+ * disambiguation prompts reply directly.
+ */
+export async function handleGroupMessage({ groupJid, senderPn, text, message }, { sendText }) {
+  const settings = await getSettings()
+  if (!settings.whatsapp_group_jid || groupJid !== settings.whatsapp_group_jid) return
+
+  const parsed = parseCommand(text)
+  if (!parsed) return
+  const { action, code } = parsed
+
+  // Quote the sender's own message so a reply is unambiguous even when
+  // several people send commands close together. Every reply also points
+  // back to /help, except the help listing itself.
+  const reply = (msg) => sendText(groupJid, `${msg}${HELP_FOOTER}`, { quoted: message })
+
+  if (action === 'help') {
+    await sendText(groupJid, HELP_TEXT, { quoted: message })
+    return
+  }
+
+  const openMixes = await getOpenMixes()
+  if (openMixes.length === 0) {
+    await reply('🤖 Não há nenhum mix com inscrições abertas neste momento.')
+    return
+  }
+
+  async function resolveProfileOrReply() {
+    const profile = await resolveProfileByPhoneJid(senderPn)
+    if (!profile) {
+      await reply(
+        `🤖 Não te encontrei na app 😅 Regista-te primeiro em ${config.appUrl} e confirma o teu número de telemóvel no perfil.`
+      )
+    }
+    return profile
+  }
+
+  // Joins/leaves a specific, already-resolved mix — the same logic
+  // regardless of how that mix got picked (explicit code, the only-one-open
+  // shortcut, or being the one mix the sender is in for a bare "out").
+  async function actOnGame(mixRow, knownProfile) {
+    const { game, people, capacity } = await loadGame(mixRow.id)
+    const gameIsFuture = new Date(game.date).getTime() > Date.now()
+
+    if (!OPEN_STATUSES.has(game.status) || !gameIsFuture) {
+      if (action === 'in') {
+        await reply('🤖 Não há nenhum mix com inscrições abertas neste momento.')
+      } else {
+        await reply('🤖 Este mix já começou/terminou — já não é possível sair por aqui.')
+      }
+      return
+    }
+
+    const profile = knownProfile ?? (await resolveProfileOrReply())
+    if (!profile) return
+
+    const { data: existingRows, error: existingError } = await supabase
+      .from('participants')
+      .select('id, user_id, partner_id')
+      .eq('game_id', game.id)
+      .eq('status', 'confirmed')
+
+    if (existingError) throw new Error(`Failed to check existing participants: ${existingError.message}`)
+
+    const ownRow = existingRows.find((row) => row.user_id === profile.id)
+    const asPartnerRow = existingRows.find((row) => row.partner_id === profile.id)
+
+    if (action === 'in') {
+      if (ownRow || asPartnerRow) {
+        await reply('🤖 Já estás inscrito neste mix! 🎾')
+        return
+      }
+      if (people.length >= capacity) {
+        await reply('🤖 O mix já está completo! 😢 Fica atento à próxima.')
+        return
+      }
+
+      const { error: insertError } = await supabase
+        .from('participants')
+        .insert([{ game_id: game.id, user_id: profile.id, status: 'confirmed', joined_alone: true }])
+
+      if (insertError) {
+        if (insertError.code === '23505') {
+          await reply('🤖 Já estás inscrito neste mix! 🎾')
+          return
+        }
+        throw new Error(`Failed to insert participant: ${insertError.message}`)
+      }
+      // No reply — the participants INSERT triggers a roster repost via sync.js.
+      return
+    }
+
+    // action === 'out'
+    if (asPartnerRow) {
+      await reply('🤖 Inscreveste-te em dupla pela app — para sair, usa a app 📱')
+      return
+    }
+    if (!ownRow) {
+      await reply('🤖 Não estás inscrito neste mix.')
+      return
+    }
+
+    const { error: deleteError } = await supabase.from('participants').delete().eq('id', ownRow.id)
+    if (deleteError) throw new Error(`Failed to remove participant: ${deleteError.message}`)
+    // No reply — the participants DELETE triggers a roster repost via sync.js.
+  }
+
+  if (code) {
+    const game = openMixes.find((m) => m.short_code === code)
+    if (!game) {
+      await reply(`🤖 Não encontrei nenhum mix aberto com o código ${code}.`)
+      return
+    }
+    await actOnGame(game, null)
+    return
+  }
+
+  if (openMixes.length === 1) {
+    await actOnGame(openMixes[0], null)
+    return
+  }
+
+  // 2+ open mixes, no code given — disambiguate.
+  if (action === 'in') {
+    const list = openMixes.map(formatMixLine).join('\n')
+    await reply(
+      `🤖 Há vários mixes abertos! Qual deles?\n\n${list}\n\nEscreve *In ${openMixes[0].short_code}* (com o código do mix que queres).`
+    )
+    return
+  }
+
+  // action === 'out': resolve the sender first so an unknown sender still
+  // gets the existing rejection instead of a confusing "which mix?" prompt.
+  const profile = await resolveProfileOrReply()
+  if (!profile) return
+
+  const { data: rows, error } = await supabase
+    .from('participants')
+    .select('game_id, user_id, partner_id')
+    .in('game_id', openMixes.map((m) => m.id))
+    .eq('status', 'confirmed')
+
+  if (error) throw new Error(`Failed to check existing participants: ${error.message}`)
+
+  const memberGameIds = new Set(
+    rows.filter((row) => row.user_id === profile.id || row.partner_id === profile.id).map((row) => row.game_id)
+  )
+  const memberMixes = openMixes.filter((m) => memberGameIds.has(m.id))
+
+  if (memberMixes.length === 0) {
+    await reply('🤖 Não estás inscrito em nenhum mix aberto.')
+    return
+  }
+  if (memberMixes.length > 1) {
+    const list = memberMixes.map(formatMixLine).join('\n')
+    await reply(
+      `🤖 Estás inscrito em vários mixes! De qual queres sair?\n\n${list}\n\nEscreve *Out ${memberMixes[0].short_code}* (com o código do mix).`
+    )
+    return
+  }
+
+  await actOnGame(memberMixes[0], profile)
+}

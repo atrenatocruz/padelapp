@@ -31,4 +31,9 @@ dist-ssr
 # Supabase
 .supabase
 
+# WhatsApp bot (local dev runs only — production secrets live in Fly.io)
+whatsapp-bot/node_modules
+whatsapp-bot/baileys-auth
+whatsapp-bot/.env
+
 

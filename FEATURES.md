@@ -66,9 +66,8 @@ Complete feature list and roadmap.
 ## 🚧 Planned Features (Future)
 
 ### Notifications
-- ⏳ WhatsApp Cloud API integration (paid)
+- ✅ WhatsApp group bot (`whatsapp-bot/`) — posts mix roster into the group, "In"/"Out" replies sync to the app (see `whatsapp-bot/README.md` for setup)
 - ⏳ Twilio SMS notifications (paid)
-- ⏳ Telegram bot notifications (free alternative)
 - ⏳ In-app push notifications (PWA)
 - ⏳ Email notifications
 

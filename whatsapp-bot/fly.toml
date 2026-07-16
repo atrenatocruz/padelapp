@@ -1,0 +1,27 @@
+# Fly.io app config for the WhatsApp bot.
+# Create the app first with: fly launch --no-deploy (run from whatsapp-bot/)
+# then adjust `app` below to match the name you were given.
+
+app = "padeleiros-wa-bot"
+primary_region = "mad"
+
+[build]
+
+[env]
+  AUTH_DIR = "/data/baileys-auth"
+  PORT = "8080"
+
+[[mounts]]
+  source = "wa_session"
+  destination = "/data"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"
