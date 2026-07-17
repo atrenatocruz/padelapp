@@ -131,14 +131,14 @@ export const AuthProvider = ({ children }) => {
       if (membershipError) throw membershipError
 
       // Single-club phase: anyone who signs in with no membership at all
-      // (no invite link, no pending slug) auto-joins this one default club
-      // instead of hitting a "pick a club" dead end. Sunset this by
-      // unsetting VITE_DEFAULT_ORG_SLUG once there's more than one real
-      // club — the invite-link/manual-join flow (Home.jsx) already
-      // handles that case and keeps working unchanged.
-      const defaultOrgSlug = import.meta.env.VITE_DEFAULT_ORG_SLUG
-      if ((membershipData?.length ?? 0) === 0 && defaultOrgSlug) {
-        const { error: autoJoinError } = await supabase.rpc('join_organization', { p_slug: defaultOrgSlug })
+      // (no invite link, no pending slug) auto-joins the one existing club
+      // instead of hitting a "pick a club" dead end. No slug/env var — the
+      // RPC finds the single organization itself, and raises once a second
+      // organization exists, so this sunsets automatically. The
+      // invite-link/manual-join flow (Home.jsx) already handles the
+      // multi-club case and keeps working unchanged.
+      if ((membershipData?.length ?? 0) === 0) {
+        const { error: autoJoinError } = await supabase.rpc('join_default_organization')
         if (autoJoinError) {
           console.error('Failed to auto-join default organization:', autoJoinError)
         } else {

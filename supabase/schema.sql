@@ -440,6 +440,36 @@ $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 REVOKE EXECUTE ON FUNCTION join_organization(TEXT) FROM anon, public;
 GRANT EXECUTE ON FUNCTION join_organization(TEXT) TO authenticated;
 
+-- Single-club phase auto-join: attaches the CALLING user to the one and
+-- only organization, without the client having to know its slug. Refuses
+-- to run (raises) when there are 0 or ≥2 organizations, so it disables
+-- itself automatically the moment a second real club exists — the
+-- invite-link flow (join_organization above) takes over from there.
+-- Idempotent, same as join_organization.
+CREATE OR REPLACE FUNCTION join_default_organization()
+RETURNS UUID AS $$
+DECLARE
+  v_count BIGINT;
+  v_org_id UUID;
+BEGIN
+  SELECT COUNT(*) INTO v_count FROM organizations;
+  IF v_count <> 1 THEN
+    RAISE EXCEPTION 'Auto-join indisponível: existem % organizações (esperada exatamente 1)', v_count;
+  END IF;
+
+  SELECT id INTO v_org_id FROM organizations;
+
+  INSERT INTO memberships (user_id, organization_id)
+  VALUES (auth.uid(), v_org_id)
+  ON CONFLICT (user_id, organization_id) DO NOTHING;
+
+  RETURN v_org_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+REVOKE EXECUTE ON FUNCTION join_default_organization() FROM anon, public;
+GRANT EXECUTE ON FUNCTION join_default_organization() TO authenticated;
+
 -- Finalize RPC (transactional ranking update, per-organization).
 CREATE OR REPLACE FUNCTION finalize_mix(p_game_id UUID, p_winner_team_id UUID)
 RETURNS void AS $$
