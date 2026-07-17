@@ -449,15 +449,31 @@ export function ShareModal({ title = 'Partilhar', message, url, onClose }) {
   )
 }
 
+// Browsers only let an AudioContext actually produce sound if it was
+// created/resumed during a genuine user gesture (click/tap) — one created
+// later from a timer callback (the round hitting 00:00) is silently
+// suspended forever, which is why the beep wasn't audible. Fix: keep ONE
+// shared context alive for the page, and resume it on the admin's very
+// first tap anywhere (RoundTimer wires this up below) — by the time the
+// round actually expires, the context is already running, so the beep
+// that fires later plays normally.
+let sharedAudioCtx = null
+function getSharedAudioContext() {
+  if (!sharedAudioCtx) {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext
+    sharedAudioCtx = new AudioCtx()
+  }
+  return sharedAudioCtx
+}
+
 // Three short beeps via the Web Audio API — no bundled audio asset, works
 // offline as a PWA, and needs no license. Wrapped in try/catch: Web Audio
-// can be unavailable or blocked by autoplay policy on some browsers: the
-// visual "00:00" state is still enough of a signal if the beep is silently
-// skipped.
+// can be unavailable on some browsers: the visual "00:00" state is still
+// enough of a signal if the beep is silently skipped.
 function playRoundEndBeep() {
   try {
-    const AudioCtx = window.AudioContext || window.webkitAudioContext
-    const ctx = new AudioCtx()
+    const ctx = getSharedAudioContext()
+    if (ctx.state === 'suspended') ctx.resume()
     const now = ctx.currentTime
     ;[0, 0.25, 0.5].forEach((offset) => {
       const osc = ctx.createOscillator()
@@ -490,6 +506,20 @@ export function RoundTimer({ startedAt, durationMinutes, isAdmin, onAdjust }) {
     const interval = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(interval)
   }, [])
+
+  // Unlock the shared audio context on the admin's first tap anywhere on
+  // the page — this IS a genuine user gesture, so it's allowed to start
+  // the context running, unlike the expiry beep itself (fired from a
+  // timer, not a click).
+  useEffect(() => {
+    if (!isAdmin) return
+    const unlock = () => {
+      const ctx = getSharedAudioContext()
+      if (ctx.state === 'suspended') ctx.resume()
+    }
+    document.addEventListener('pointerdown', unlock, { once: true })
+    return () => document.removeEventListener('pointerdown', unlock)
+  }, [isAdmin])
 
   // Re-arm the alert whenever a new round starts, or the admin extends a
   // round that had already rung once (so it can ring again at the new end).
