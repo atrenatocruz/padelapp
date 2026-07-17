@@ -1,13 +1,47 @@
 import { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { CalendarX2, Users } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
-import { MixCard, EmptyState } from '../components/ui'
+import { MixCard, EmptyState, PrimaryButton } from '../components/ui'
 
 export default function Home() {
   const [games, setGames] = useState([])
   const [loading, setLoading] = useState(true)
-  const { user, profile, currentOrganizationId } = useAuth()
+  const { user, profile, currentOrganizationId, joinOrganization } = useAuth()
+  const [searchParams] = useSearchParams()
+  const [joinSlug, setJoinSlug] = useState('')
+  const [joining, setJoining] = useState(false)
+  const [joinError, setJoinError] = useState('')
+
+  const handleJoin = async (slugOverride) => {
+    const slug = (slugOverride ?? joinSlug).trim()
+    if (!slug) return
+    setJoining(true)
+    setJoinError('')
+    try {
+      const { error } = await joinOrganization(slug)
+      if (error) throw error
+    } catch (error) {
+      console.error('Error joining organization:', error)
+      setJoinError('Não foi possível juntar-te a esse clube. Confirma o nome com o admin.')
+    } finally {
+      setJoining(false)
+    }
+  }
+
+  // Invite links carry ?org=<slug>, but that's normally only consumed by
+  // the /login page — someone who's already signed in (with no club yet)
+  // gets redirected straight past /login to here without it ever being
+  // read. Pick it up here too, so an invite link works for an existing,
+  // club-less session, not just a fresh signup.
+  useEffect(() => {
+    const orgSlug = searchParams.get('org')
+    if (orgSlug && !currentOrganizationId) {
+      handleJoin(orgSlug)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     // No org yet (e.g. signed in without an invite link) — nothing to
@@ -123,7 +157,31 @@ export default function Home() {
         <EmptyState
           icon={Users}
           title="Ainda não pertences a nenhum clube"
-          subtitle="Pede ao admin do teu clube o link de convite para te juntares."
+          subtitle={
+            joining
+              ? 'A juntar-te ao clube…'
+              : 'Escreve o nome do clube que o admin te deu, ou usa o link de convite.'
+          }
+          action={
+            !joining && (
+              <form
+                onSubmit={(e) => { e.preventDefault(); handleJoin() }}
+                className="space-y-3 max-w-xs mx-auto"
+              >
+                <input
+                  type="text"
+                  value={joinSlug}
+                  onChange={(e) => setJoinSlug(e.target.value)}
+                  placeholder="nome do clube"
+                  className="input-field text-center"
+                />
+                {joinError && <p className="text-xs text-danger">{joinError}</p>}
+                <PrimaryButton type="submit" disabled={!joinSlug.trim()} className="w-full">
+                  Entrar no clube
+                </PrimaryButton>
+              </form>
+            )
+          }
         />
       ) : games.length === 0 ? (
         <EmptyState
