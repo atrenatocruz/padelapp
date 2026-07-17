@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { CalendarX2 } from 'lucide-react'
+import { CalendarX2, Users } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { MixCard, EmptyState } from '../components/ui'
@@ -10,7 +10,14 @@ export default function Home() {
   const { user, profile, currentOrganizationId } = useAuth()
 
   useEffect(() => {
-    if (!currentOrganizationId) return
+    // No org yet (e.g. signed in without an invite link) — nothing to
+    // load. Without this, `loading` would stay true forever: the effect
+    // below never runs, so setLoading(false) never fires and the page
+    // spins indefinitely instead of showing the "no club" message.
+    if (!currentOrganizationId) {
+      setLoading(false)
+      return
+    }
 
     loadGames()
 
@@ -112,7 +119,13 @@ export default function Home() {
         <h2 className="text-3xl text-court-900">Próximos jogos</h2>
       </div>
 
-      {games.length === 0 ? (
+      {!currentOrganizationId ? (
+        <EmptyState
+          icon={Users}
+          title="Ainda não pertences a nenhum clube"
+          subtitle="Pede ao admin do teu clube o link de convite para te juntares."
+        />
+      ) : games.length === 0 ? (
         <EmptyState
           icon={CalendarX2}
           title="Campo livre… por agora"
