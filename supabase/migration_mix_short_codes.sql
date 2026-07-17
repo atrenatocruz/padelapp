@@ -82,4 +82,12 @@ ALTER TABLE games ALTER COLUMN short_code SET NOT NULL;
 -- ── 5. Drop the now-obsolete single-active-mix pointer ───────────────────
 -- Multiple mixes can be open at once now; "which mixes are open" is
 -- computed directly (status + date) instead of tracked via one pointer.
-ALTER TABLE settings DROP COLUMN IF EXISTS active_whatsapp_game_id;
+-- Guarded because migration_multi_tenant.sql may already have dropped the
+-- whole `settings` table (ALTER TABLE on a missing relation errors even
+-- with "DROP COLUMN IF EXISTS" — the IF EXISTS only covers the column).
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'settings') THEN
+    ALTER TABLE settings DROP COLUMN IF EXISTS active_whatsapp_game_id;
+  END IF;
+END $$;
