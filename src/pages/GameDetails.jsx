@@ -4,7 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { Calendar, MapPin, ArrowLeft, UserPlus, User, Check, Lock, Trophy, Play, ChevronRight, Swords, X, Repeat, Share2 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
-import { PrimaryButton, LevelBadge, GuestBadge, PlayerAvatarRow, EmptyState, ShareModal, RoundTimer } from '../components/ui'
+import { PrimaryButton, LevelBadge, GuestBadge, PlayerAvatarRow, EmptyState, ShareModal, RoundTimer, Avatar } from '../components/ui'
 import {
   countPeople, totalRounds, formDuplas, seedCourts, nextSobeDesce,
   roundRobinRound, standings, eliminationPhases, firstElimMatches, nextElimMatches,
@@ -90,8 +90,8 @@ export default function GameDetails() {
         .from('participants')
         .select(`
           *,
-          user:profiles!participants_user_id_fkey (id, name, preferred_side),
-          partner:profiles!participants_partner_id_fkey (id, name, preferred_side)
+          user:profiles!participants_user_id_fkey (id, name, preferred_side, avatar_url),
+          partner:profiles!participants_partner_id_fkey (id, name, preferred_side, avatar_url)
         `)
         .eq('game_id', id)
         .eq('status', 'confirmed')
@@ -732,7 +732,7 @@ export default function GameDetails() {
 
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2 mt-5 pt-4 border-t border-line">
           <PlayerAvatarRow
-            players={people.map(p => ({ id: p.id, name: p.name }))}
+            players={people.map(p => ({ id: p.id, name: p.name, avatar_url: p.avatar_url }))}
             max={capacity}
           />
           {showClosed && (
@@ -1033,9 +1033,7 @@ export default function GameDetails() {
                     person.id === user.id ? 'bg-volt-400/20' : 'bg-sand'
                   }`}
                 >
-                  <div className="w-10 h-10 bg-court-600 text-white rounded-full flex items-center justify-center font-extrabold shrink-0">
-                    {person.name?.charAt(0).toUpperCase()}
-                  </div>
+                  <Avatar name={person.name} url={person.avatar_url} size="w-10 h-10 text-sm" />
                   <div className="flex-1 min-w-0">
                     <p className="font-extrabold text-court-900 truncate">
                       {person.name}

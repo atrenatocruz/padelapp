@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Trophy, Target, Award, Swords, ChevronDown } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
-import { PrimaryButton, LevelBadge, EmptyState } from '../components/ui'
+import { PrimaryButton, LevelBadge, EmptyState, Avatar } from '../components/ui'
 import { winRatePct } from '../lib/statsLogic'
 
 export default function PlayerDetails() {
@@ -29,7 +29,7 @@ export default function PlayerDetails() {
     setLoading(true)
     try {
       const [{ data: profileData, error: profileError }, { data: membershipData, error: membershipError }, { data: statsData, error: statsError }] = await Promise.all([
-        supabase.from('profiles').select('id, name').eq('id', id).single(),
+        supabase.from('profiles').select('id, name, avatar_url').eq('id', id).single(),
         supabase.from('memberships').select('level').eq('user_id', id).eq('organization_id', currentOrganizationId).maybeSingle(),
         supabase.from('player_stats').select('*').eq('user_id', id).eq('organization_id', currentOrganizationId).maybeSingle(),
       ])
@@ -140,8 +140,8 @@ export default function PlayerDetails() {
           <line x1="200" y1="-60" x2="200" y2="200" stroke="currentColor" strokeWidth="3" />
         </svg>
         <div className="relative py-2">
-          <div className="w-20 h-20 bg-volt-400 text-court-900 rounded-full flex items-center justify-center mx-auto mb-3 text-3xl font-extrabold">
-            {player.name?.charAt(0).toUpperCase()}
+          <div className="w-20 h-20 mx-auto mb-3">
+            <Avatar name={player.name} url={player.avatar_url} size="w-20 h-20 text-3xl" colorClass="bg-volt-400 text-court-900" />
           </div>
           <h2 className="text-2xl text-white">{player.name}</h2>
           <div className="mt-2.5">

@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { Trophy, Award, ChevronDown, Calendar } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
-import { LevelBadge, EmptyState, MixCard } from '../components/ui'
+import { LevelBadge, EmptyState, MixCard, Avatar } from '../components/ui'
 import { winRatePct, buildMonthlyLeaderboard } from '../lib/statsLogic'
 
 const TABS = [
@@ -42,7 +42,7 @@ export default function Rankings() {
   const loadMembershipMap = async () => {
     const { data, error } = await supabase
       .from('memberships')
-      .select('user_id, is_guest, level, profile:profiles(name)')
+      .select('user_id, is_guest, level, profile:profiles(name, avatar_url)')
       .eq('organization_id', currentOrganizationId)
     if (error) throw error
     return new Map((data || []).map((m) => [m.user_id, m]))
@@ -53,7 +53,7 @@ export default function Rankings() {
       const membershipByUser = await loadMembershipMap()
       const list = [...membershipByUser.entries()]
         .filter(([, m]) => !m.is_guest)
-        .map(([userId, m]) => ({ id: userId, name: m.profile?.name || 'Jogador', level: m.level }))
+        .map(([userId, m]) => ({ id: userId, name: m.profile?.name || 'Jogador', level: m.level, avatar_url: m.profile?.avatar_url }))
         .sort((a, b) => a.name.localeCompare(b.name))
       setPlayers(list)
     } catch (error) {
@@ -123,8 +123,8 @@ export default function Rankings() {
             *,
             participants (
               id, user_id, partner_id, status,
-              user:profiles!participants_user_id_fkey (name),
-              partner:profiles!participants_partner_id_fkey (name)
+              user:profiles!participants_user_id_fkey (name, avatar_url),
+              partner:profiles!participants_partner_id_fkey (name, avatar_url)
             )
           `)
           .eq('organization_id', currentOrganizationId)
@@ -292,9 +292,7 @@ export default function Rankings() {
                       to={`/jogador/${p.id}`}
                       className="flex items-center gap-3 px-5 py-3 transition-colors duration-fast hover:bg-court-50"
                     >
-                      <div className="w-9 h-9 bg-court-600 text-white rounded-full flex items-center justify-center font-extrabold text-sm shrink-0">
-                        {(p.name || '?').charAt(0).toUpperCase()}
-                      </div>
+                      <Avatar name={p.name} url={p.avatar_url} size="w-9 h-9 text-sm" />
                       <p className="flex-1 min-w-0 font-extrabold text-court-900 truncate">{p.name}</p>
                       <LevelBadge level={p.level} />
                     </Link>

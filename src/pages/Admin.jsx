@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Plus, Calendar, Users, Trash2, Edit2, Check, X, UserX } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
-import { DateTimeField } from '../components/ui'
+import { DateTimeField, Avatar } from '../components/ui'
 import { totalRounds, FORMAT_LABEL } from '../lib/mixLogic'
 
 // datetime-local <-> stored timestamptz helpers (keeps Portugal wall-clock)
@@ -144,6 +144,7 @@ export default function Admin() {
         is_admin: m.is_admin,
         is_guest: m.is_guest,
         level: m.level,
+        avatar_url: m.profile?.avatar_url,
       }))
       .sort((a, b) => a.name.localeCompare(b.name))
 
@@ -596,9 +597,7 @@ export default function Admin() {
               {members.map(member => (
                 <div key={member.id} className="card">
                   <div className="flex items-center gap-3.5">
-                    <div className="w-11 h-11 bg-court-600 text-white rounded-full flex items-center justify-center font-extrabold shrink-0">
-                      {member.name.charAt(0).toUpperCase()}
-                    </div>
+                    <Avatar name={member.name} url={member.avatar_url} size="w-11 h-11 text-sm" />
                     <div className="flex-1 min-w-0">
                       <h3 className="font-extrabold text-court-900 truncate flex items-center gap-1.5">
                         <span className="truncate">{member.name}</span>

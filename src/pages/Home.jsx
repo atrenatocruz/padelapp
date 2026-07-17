@@ -82,8 +82,8 @@ export default function Home() {
             user_id,
             partner_id,
             status,
-            user:profiles!participants_user_id_fkey (name),
-            partner:profiles!participants_partner_id_fkey (name)
+            user:profiles!participants_user_id_fkey (name, avatar_url),
+            partner:profiles!participants_partner_id_fkey (name, avatar_url)
           )
         `)
         .eq('organization_id', currentOrganizationId)
