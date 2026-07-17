@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
 import { MapPin, CheckCircle2, ChevronRight, Lock, Play, Calendar, X, Share2, MessageCircle, Link2 } from 'lucide-react'
 
@@ -314,6 +315,7 @@ export function MixCard({ game, joined = false }) {
    share (when the device supports it) + copy-link fallback. */
 export function ShareModal({ title = 'Partilhar', message, url, onClose }) {
   const [caption, setCaption] = useState(message)
+  const [editingCaption, setEditingCaption] = useState(false)
   const [copied, setCopied] = useState(false)
 
   const fullText = `${caption}\n\n🔗 ${url}`
@@ -341,7 +343,13 @@ export function ShareModal({ title = 'Partilhar', message, url, onClose }) {
     }
   }
 
-  return (
+  // Rendered via portal straight into <body> — this modal is opened from
+  // pages nested inside <main>, which carries a permanent (fill-mode:
+  // both) animate-fade-up transform. An ancestor with any transform,
+  // including a completed one, becomes the containing block for
+  // descendant `fixed` elements on iOS Safari, so without the portal this
+  // renders inline in the page instead of as a fullscreen overlay.
+  return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-court-900/50 animate-fade-in"
       onClick={onClose}
@@ -369,25 +377,49 @@ export function ShareModal({ title = 'Partilhar', message, url, onClose }) {
             {fullText}
           </div>
 
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="text-sm font-extrabold text-court-900">Legenda</label>
-              {caption !== message && (
-                <button
-                  onClick={() => setCaption(message)}
-                  className="text-court-600 text-xs font-extrabold"
-                >
-                  Repor
-                </button>
-              )}
+          {editingCaption ? (
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-sm font-extrabold text-court-900">Legenda</label>
+                <div className="flex items-center gap-3">
+                  {caption !== message && (
+                    <button
+                      onClick={() => setCaption(message)}
+                      className="text-court-600 text-xs font-extrabold"
+                    >
+                      Repor
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setEditingCaption(false)}
+                    className="text-court-600 text-xs font-extrabold"
+                  >
+                    Concluído
+                  </button>
+                </div>
+              </div>
+              <textarea
+                value={caption}
+                onChange={(e) => setCaption(e.target.value)}
+                rows={4}
+                className="input-field resize-none"
+                autoFocus
+              />
             </div>
-            <textarea
-              value={caption}
-              onChange={(e) => setCaption(e.target.value)}
-              rows={4}
-              className="input-field resize-none"
-            />
-          </div>
+          ) : (
+            <div className="flex items-center justify-between gap-3">
+              <p className="flex-1 min-w-0 truncate text-sm text-muted">
+                <span className="font-extrabold text-court-900">Legenda: </span>
+                {caption}
+              </p>
+              <button
+                onClick={() => setEditingCaption(true)}
+                className="text-court-600 text-xs font-extrabold shrink-0"
+              >
+                Editar
+              </button>
+            </div>
+          )}
 
           <button
             onClick={handleCopyLink}
@@ -412,6 +444,7 @@ export function ShareModal({ title = 'Partilhar', message, url, onClose }) {
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Calendar, MapPin, ArrowLeft, UserPlus, User, Check, Lock, Trophy, Play, ChevronRight, Swords, X, Repeat, Share2 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
@@ -599,8 +600,12 @@ export default function GameDetails() {
 
   return (
     <div className="space-y-4">
-      {/* Booking confirmation — satisfying, brief, out of the way */}
-      {justBooked && (
+      {/* Booking confirmation — satisfying, brief, out of the way.
+          Portal'd to <body>: <main> carries a permanent (fill-mode: both)
+          transform from animate-fade-up, which on iOS Safari becomes the
+          containing block for descendant `fixed` elements, breaking the
+          fullscreen overlay otherwise. */}
+      {justBooked && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-court-900/50 animate-fade-in" aria-hidden="true">
           <div className="bg-surface rounded-card shadow-lift px-10 py-8 text-center animate-pop">
             <div className="w-16 h-16 rounded-full bg-volt-400 flex items-center justify-center mx-auto mb-3">
@@ -609,7 +614,8 @@ export default function GameDetails() {
             <p className="font-extrabold text-lg text-court-900">Estás dentro!</p>
             <p className="text-muted text-sm">Bola ao ar 🎾</p>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       <div className="flex items-center justify-between">
