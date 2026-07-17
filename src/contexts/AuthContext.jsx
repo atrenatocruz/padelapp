@@ -53,7 +53,10 @@ export const AuthProvider = ({ children }) => {
       return
     }
 
-    // Check active sessions
+    // Check active sessions. Without a .catch here, a rejected getSession()
+    // (e.g. a transient network hiccup right after the OAuth redirect)
+    // would leave `loading` stuck true forever — the whole app gated
+    // behind an infinite spinner with no way out but a manual refresh.
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null)
       if (session?.user) {
@@ -61,6 +64,9 @@ export const AuthProvider = ({ children }) => {
       } else {
         setLoading(false)
       }
+    }).catch((error) => {
+      console.error('Error checking session:', error)
+      setLoading(false)
     })
 
     // Listen for auth changes
