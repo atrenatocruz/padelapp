@@ -148,6 +148,28 @@ ALTER TABLE matches ENABLE ROW LEVEL SECURITY;
 ALTER TABLE player_stats ENABLE ROW LEVEL SECURITY;
 ALTER TABLE mix_player_stats ENABLE ROW LEVEL SECURITY;
 
+-- Admin-check helper, SECURITY DEFINER so it bypasses RLS internally.
+-- Needed because a policy on `memberships` that subqueries `memberships`
+-- directly would re-trigger its own RLS on every read (including reads
+-- from OTHER tables' policies that subquery memberships) — infinite
+-- recursion (Postgres error 42P17). Routing the check through a
+-- SECURITY DEFINER function breaks that cycle.
+CREATE OR REPLACE FUNCTION is_org_admin(p_organization_id UUID)
+RETURNS BOOLEAN
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+STABLE
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM memberships
+    WHERE organization_id = p_organization_id AND user_id = auth.uid() AND is_admin
+  );
+$$;
+
+REVOKE ALL ON FUNCTION is_org_admin(UUID) FROM public;
+GRANT EXECUTE ON FUNCTION is_org_admin(UUID) TO authenticated;
+
 -- organizations: members can see their own org(s); no direct INSERT policy
 -- (org creation is manual, via SQL editor, for now — see decisions doc).
 -- Admins of an org can update its own settings row.
@@ -193,11 +215,7 @@ CREATE POLICY "See own memberships"
 
 CREATE POLICY "Org admins see all memberships in their org"
   ON memberships FOR SELECT
-  USING (EXISTS (
-    SELECT 1 FROM memberships m2
-    WHERE m2.organization_id = memberships.organization_id
-      AND m2.user_id = auth.uid() AND m2.is_admin
-  ));
+  USING (is_org_admin(organization_id));
 
 -- games: members of the org can view; org admins can create/update/delete.
 CREATE POLICY "Org members can view games"
