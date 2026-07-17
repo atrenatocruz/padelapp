@@ -31,6 +31,7 @@ CREATE TABLE profiles (
   birthday DATE,
   gender TEXT,
   phone_hash TEXT,
+  avatar_url TEXT,
   preferred_side TEXT NOT NULL DEFAULT 'both' CHECK (preferred_side IN ('left', 'right', 'both')),
   created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW())
 );
@@ -693,3 +694,28 @@ $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 REVOKE EXECUTE ON FUNCTION admin_set_membership_admin(UUID, UUID, BOOLEAN) FROM anon, public;
 GRANT EXECUTE ON FUNCTION admin_set_membership_admin(UUID, UUID, BOOLEAN) TO authenticated;
+
+-- ════════════════════════════════════════════════════════════════════════
+-- Storage: player avatar photos (public read, owner-only write — see
+-- migration_add_avatar_url.sql for the full rationale)
+-- ════════════════════════════════════════════════════════════════════════
+
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('avatars', 'avatars', true)
+ON CONFLICT (id) DO NOTHING;
+
+CREATE POLICY "Avatar images are publicly accessible"
+  ON storage.objects FOR SELECT
+  USING (bucket_id = 'avatars');
+
+CREATE POLICY "Users can upload their own avatar"
+  ON storage.objects FOR INSERT
+  WITH CHECK (bucket_id = 'avatars' AND (storage.foldername(name))[1] = auth.uid()::text);
+
+CREATE POLICY "Users can update their own avatar"
+  ON storage.objects FOR UPDATE
+  USING (bucket_id = 'avatars' AND (storage.foldername(name))[1] = auth.uid()::text);
+
+CREATE POLICY "Users can delete their own avatar"
+  ON storage.objects FOR DELETE
+  USING (bucket_id = 'avatars' AND (storage.foldername(name))[1] = auth.uid()::text);
