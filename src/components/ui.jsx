@@ -152,6 +152,20 @@ export function GuestBadge({ size = 'sm', label = 'Convidado' }) {
   )
 }
 
+/* ─── Avatar ─────────────────────────────────────────────────────────────
+   Shows the person's photo when they have one, otherwise the existing
+   colored-circle-with-initial. `size` carries width/height/text-size (and
+   any extra utility classes a call site needs, e.g. a ring); `colorClass`
+   is the fallback bg/text pair — each call site keeps its own current
+   look for people with no photo yet. */
+export function Avatar({ name, url, size = 'w-10 h-10 text-sm', colorClass = 'bg-court-600 text-white' }) {
+  const base = `${size} rounded-full flex items-center justify-center shrink-0 font-extrabold overflow-hidden`
+  if (url) {
+    return <img src={url} alt={name || ''} className={`${base} object-cover`} />
+  }
+  return <div className={`${base} ${colorClass}`}>{(name || '?').charAt(0).toUpperCase()}</div>
+}
+
 /* ─── PlayerAvatarRow ────────────────────────────────────────────────────
    Filled initials + dashed empty slots + count. Slots visible at a glance.
    Caps visible avatars (cap) with a +N chip so wide games stay compact. */
@@ -165,14 +179,8 @@ export function PlayerAvatarRow({ players = [], max = 4, size = 'md', cap = 6 })
     <div className="flex items-center gap-2.5">
       <div className="flex -space-x-2">
         {shown.map((p, i) => (
-          <div
-            key={p.id || i}
-            title={p.name}
-            style={{ zIndex: cap - i }}
-            className={`${dim} relative rounded-full bg-court-600 text-white font-extrabold
-                        flex items-center justify-center ring-2 ring-surface`}
-          >
-            {(p.name || '?').charAt(0).toUpperCase()}
+          <div key={p.id || i} title={p.name} style={{ zIndex: cap - i }} className="relative">
+            <Avatar name={p.name} url={p.avatar_url} size={`${dim} ring-2 ring-surface`} />
           </div>
         ))}
         {Array.from({ length: empty }).map((_, i) => (
@@ -229,8 +237,8 @@ export function MixCard({ game, joined = false }) {
   const players = (game.participants || [])
     .filter(p => p.status === 'confirmed')
     .flatMap(p => [
-      { id: p.user_id, name: p.user?.name, level: p.user?.level, isGuest: p.user?.is_guest },
-      ...(p.partner_id ? [{ id: p.partner_id, name: p.partner?.name, level: p.partner?.level, isGuest: p.partner?.is_guest }] : []),
+      { id: p.user_id, name: p.user?.name, level: p.user?.level, isGuest: p.user?.is_guest, avatar_url: p.user?.avatar_url },
+      ...(p.partner_id ? [{ id: p.partner_id, name: p.partner?.name, level: p.partner?.level, isGuest: p.partner?.is_guest, avatar_url: p.partner?.avatar_url }] : []),
     ])
 
   // Guests count as players but their (default) level shouldn't skew the range
