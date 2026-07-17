@@ -4,7 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { Calendar, MapPin, ArrowLeft, UserPlus, User, Check, Lock, Trophy, Play, ChevronRight, Swords, X, Repeat, Share2 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
-import { PrimaryButton, LevelBadge, GuestBadge, PlayerAvatarRow, EmptyState, ShareModal } from '../components/ui'
+import { PrimaryButton, LevelBadge, GuestBadge, PlayerAvatarRow, EmptyState, ShareModal, RoundTimer } from '../components/ui'
 import {
   countPeople, totalRounds, formDuplas, seedCourts, nextSobeDesce,
   roundRobinRound, standings, eliminationPhases, firstElimMatches, nextElimMatches,
@@ -388,6 +388,13 @@ export default function GameDetails() {
         rows.map(m => ({ ...m, game_id: id, round_number: 1, phase: 'group' }))
       )
       if (error) throw error
+
+      const { error: timerError } = await supabase
+        .from('games')
+        .update({ round_started_at: new Date().toISOString(), round_duration_minutes: game.game_time_minutes })
+        .eq('id', id)
+      if (timerError) throw timerError
+
       loadGameDetails()
     } catch (error) {
       console.error('Error starting round 1:', error)
@@ -488,6 +495,13 @@ export default function GameDetails() {
         rows.map(m => ({ ...m, game_id: id, round_number: maxRound + 1, phase }))
       )
       if (error) throw error
+
+      const { error: timerError } = await supabase
+        .from('games')
+        .update({ round_started_at: new Date().toISOString(), round_duration_minutes: game.game_time_minutes })
+        .eq('id', id)
+      if (timerError) throw timerError
+
       loadGameDetails()
     } catch (error) {
       console.error('Error ending round:', error)
@@ -511,12 +525,28 @@ export default function GameDetails() {
         p_winner_team_id: currentWinnerTeamId,
       })
       if (error) throw error
+
+      await supabase.from('games').update({ round_started_at: null }).eq('id', id)
+
       loadGameDetails()
     } catch (error) {
       console.error('Error finalizing mix:', error)
       setMixError(error.message || 'Erro ao finalizar o mix')
     } finally {
       setBusy(false)
+    }
+  }
+
+  const handleAdjustRoundDuration = async (deltaMinutes) => {
+    const base = game.round_duration_minutes || game.game_time_minutes || 20
+    const next = Math.max(1, base + deltaMinutes)
+    try {
+      const { error } = await supabase.from('games').update({ round_duration_minutes: next }).eq('id', id)
+      if (error) throw error
+      loadGameDetails()
+    } catch (error) {
+      console.error('Error adjusting round duration:', error)
+      setMixError('Erro ao ajustar o tempo da ronda')
     }
   }
 
@@ -849,7 +879,14 @@ export default function GameDetails() {
                       </span>
                     )}
                   </h3>
-                  {isCurrent && <span className="text-xs font-extrabold text-court-600">RONDA ATUAL</span>}
+                  {isCurrent && (
+                    <RoundTimer
+                      startedAt={game.round_started_at}
+                      durationMinutes={game.round_duration_minutes}
+                      isAdmin={isAdmin}
+                      onAdjust={isAdmin ? handleAdjustRoundDuration : undefined}
+                    />
+                  )}
                 </div>
 
                 <div className="space-y-2.5">
