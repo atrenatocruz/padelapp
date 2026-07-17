@@ -1,16 +1,19 @@
 import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { Home, Trophy, User, Settings, LogOut, HelpCircle, Phone } from 'lucide-react'
+import { Home, Trophy, User, Settings, LogOut, HelpCircle, Phone, X } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { LevelBadge, PrimaryButton } from './ui'
 import { hashPhone } from '../lib/hashPhone'
 
-/* Blocking modal — no close button, no click-outside-to-dismiss. Shown
-   whenever a real (non-guest) member has no phone hash yet, since the
-   WhatsApp bot needs it to recognize them in the group. Covers Google
-   sign-ins (Google never provides a phone) and any account created
-   before the hashing service existed. */
-function PhoneRequiredModal({ onSave }) {
+// Re-prompt at most once per day once dismissed — a nudge, not a gate.
+const PHONE_PROMPT_DISMISSED_KEY = 'phonePromptDismissedDate'
+
+/* Dismissible nudge (X button or "Agora não") shown whenever a real
+   (non-guest) member has no phone hash yet, since the WhatsApp bot needs
+   it to recognize them in the group. Phone is optional — this never blocks
+   using the app, it's just a reminder that can always be skipped and the
+   number added later from the Profile page. */
+function PhoneRequiredModal({ onSave, onDismiss }) {
   const [phone, setPhone] = useState('')
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
@@ -35,14 +38,21 @@ function PhoneRequiredModal({ onSave }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-court-900/70 animate-fade-in">
-      <div className="bg-surface rounded-t-card sm:rounded-card shadow-lift w-full sm:max-w-md p-6 animate-pop">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-court-900/70 animate-fade-in" onClick={onDismiss}>
+      <div className="bg-surface rounded-t-card sm:rounded-card shadow-lift w-full sm:max-w-md p-6 animate-pop relative" onClick={(e) => e.stopPropagation()}>
+        <button
+          onClick={onDismiss}
+          aria-label="Fechar"
+          className="absolute top-4 right-4 w-9 h-9 flex items-center justify-center rounded-full text-muted hover:bg-court-50 hover:text-court-900 transition-colors duration-fast"
+        >
+          <X size={18} />
+        </button>
         <div className="w-11 h-11 rounded-full bg-volt-400/15 text-volt-600 flex items-center justify-center mb-4">
           <Phone size={20} />
         </div>
-        <h3 className="text-lg text-court-900 mb-1.5">Falta o teu nº de telemóvel</h3>
+        <h3 className="text-lg text-court-900 mb-1.5 pr-8">Queres adicionar o teu nº de telemóvel?</h3>
         <p className="text-sm text-muted mb-5">
-          Precisamos dele para te reconhecer no grupo de WhatsApp (para poderes escrever "In"/"Out" nos mixes). Sem isto não dá para continuar.
+          É opcional — só é preciso se quiseres usar o bot do WhatsApp (para poderes escrever "In"/"Out" nos mixes). Podes sempre adicionar mais tarde no teu Perfil.
         </p>
         <form onSubmit={handleSubmit} className="space-y-3">
           <input
@@ -52,7 +62,6 @@ function PhoneRequiredModal({ onSave }) {
             className="input-field"
             placeholder="912 345 678"
             autoFocus
-            required
           />
           {error && (
             <div className="bg-danger/10 text-danger px-4 py-3 rounded-ctrl text-sm font-extrabold">
@@ -62,6 +71,13 @@ function PhoneRequiredModal({ onSave }) {
           <PrimaryButton type="submit" disabled={saving} className="w-full">
             {saving ? 'A guardar…' : 'Guardar'}
           </PrimaryButton>
+          <button
+            type="button"
+            onClick={onDismiss}
+            className="w-full text-center text-court-600 font-extrabold text-sm py-2"
+          >
+            Agora não
+          </button>
         </form>
       </div>
     </div>
@@ -84,7 +100,17 @@ export default function Layout({ children }) {
   const navigate = useNavigate()
   const { signOut, profile, updateProfile, currentMembership, isAdmin, isGuest } = useAuth()
 
-  const needsPhone = profile && !isGuest && !profile.phone_hash
+  const today = new Date().toISOString().slice(0, 10)
+  const [phonePromptDismissed, setPhonePromptDismissed] = useState(
+    () => typeof window !== 'undefined' && localStorage.getItem(PHONE_PROMPT_DISMISSED_KEY) === today
+  )
+
+  const needsPhone = profile && !isGuest && !profile.phone_hash && !phonePromptDismissed
+
+  const dismissPhonePrompt = () => {
+    localStorage.setItem(PHONE_PROMPT_DISMISSED_KEY, today)
+    setPhonePromptDismissed(true)
+  }
 
   const handleSignOut = async () => {
     await signOut()
@@ -185,7 +211,10 @@ export default function Layout({ children }) {
       </nav>
 
       {needsPhone && (
-        <PhoneRequiredModal onSave={(phone_hash) => updateProfile({ phone_hash })} />
+        <PhoneRequiredModal
+          onSave={(phone_hash) => updateProfile({ phone_hash })}
+          onDismiss={dismissPhonePrompt}
+        />
       )}
     </div>
   )

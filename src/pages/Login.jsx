@@ -96,9 +96,10 @@ export default function Login() {
       return
     }
 
-    // Validate phone (tolerant of spaces/dashes/country code — just needs a real number in there)
-    if (signupPhone.replace(/\D/g, '').length < 9) {
-      setError('Introduz um número de telemóvel válido')
+    // Phone is optional — only validate if the person actually entered one
+    // (tolerant of spaces/dashes/country code, just needs a real number in there)
+    if (signupPhone && signupPhone.replace(/\D/g, '').length < 9) {
+      setError('Introduz um número de telemóvel válido, ou deixa em branco')
       setLoading(false)
       return
     }
@@ -119,9 +120,12 @@ export default function Login() {
       // Hashing needs an authenticated session (the Edge Function rejects
       // the anon key on purpose), so this can only happen after sign-in —
       // still reads as one step to the user behind the single loading state.
-      const hash = await hashPhone(signupPhone)
-      const { error: profileError } = await updateProfile({ phone_hash: hash })
-      if (profileError) throw profileError
+      // Phone is optional now, so skip entirely if left blank.
+      if (signupPhone) {
+        const hash = await hashPhone(signupPhone)
+        const { error: profileError } = await updateProfile({ phone_hash: hash })
+        if (profileError) throw profileError
+      }
 
       navigate('/')
     } catch (err) {
@@ -287,16 +291,15 @@ export default function Login() {
               </div>
 
               <div>
-                <label className={inputLabel}>Nº de telemóvel</label>
+                <label className={inputLabel}>Nº de telemóvel (opcional)</label>
                 <input
                   type="tel"
                   value={signupPhone}
                   onChange={(e) => setSignupPhone(e.target.value)}
                   className="input-field"
                   placeholder="912 345 678"
-                  required
                 />
-                <p className="text-xs text-muted mt-1.5">Usado para o bot do WhatsApp reconhecer-te no grupo</p>
+                <p className="text-xs text-muted mt-1.5">Só é preciso se quiseres usar o bot do WhatsApp. Podes adicionar mais tarde no Perfil.</p>
               </div>
 
               <div>

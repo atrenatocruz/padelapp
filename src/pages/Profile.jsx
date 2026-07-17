@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { User, Award, Trophy, Target, Flame, LogOut } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
+import { hashPhone } from '../lib/hashPhone'
 import { PrimaryButton, LevelBadge, GuestBadge, DateField } from '../components/ui'
 
 export default function Profile() {
@@ -14,6 +15,8 @@ export default function Profile() {
   const [preferredSide, setPreferredSide] = useState(profile?.preferred_side || 'both')
   const [birthday, setBirthday] = useState(profile?.birthday || '')
   const [gender, setGender] = useState(profile?.gender || '')
+  const [phone, setPhone] = useState('')
+  const [phoneError, setPhoneError] = useState('')
   const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -49,13 +52,26 @@ export default function Profile() {
 
   const handleSave = async (e) => {
     e.preventDefault()
+    setPhoneError('')
+
+    // Phone is optional — only validate/hash it if the person typed one in.
+    if (phone && phone.replace(/\D/g, '').length < 9) {
+      setPhoneError('Introduz um número de telemóvel válido, ou deixa em branco')
+      return
+    }
+
     setLoading(true)
 
     try {
-      const { error: profileError } = await updateProfile({ name, preferred_side: preferredSide, birthday, gender })
+      const updates = { name, preferred_side: preferredSide, birthday, gender }
+      if (phone) {
+        updates.phone_hash = await hashPhone(phone)
+      }
+      const { error: profileError } = await updateProfile(updates)
       if (profileError) throw profileError
       const { error: membershipError } = await updateMembership({ level })
       if (membershipError) throw membershipError
+      setPhone('')
       setEditing(false)
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
@@ -239,6 +255,23 @@ export default function Profile() {
             </div>
 
             <div>
+              <label className={inputLabel}>Nº de telemóvel</label>
+              <input
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className="input-field"
+                placeholder={profile?.phone_hash ? 'Já associado — escreve para substituir' : '912 345 678'}
+              />
+              {phoneError && <p className="text-xs text-danger mt-1.5">{phoneError}</p>}
+              <p className="text-xs text-muted mt-1.5">
+                {profile?.phone_hash
+                  ? 'Deixa em branco para manter o número atual.'
+                  : 'Opcional — só é preciso se quiseres usar o bot do WhatsApp.'}
+              </p>
+            </div>
+
+            <div>
               <label className={inputLabel}>Lado preferido</label>
               <select
                 value={preferredSide}
@@ -265,6 +298,8 @@ export default function Profile() {
                   setLevel(currentMembership?.level || 'iniciante')
                   setBirthday(profile.birthday || '')
                   setGender(profile.gender || '')
+                  setPhone('')
+                  setPhoneError('')
                 }}
                 className="flex-1"
               >
@@ -296,6 +331,11 @@ export default function Profile() {
               <p className={fieldValue}>
                 {profile?.gender ? profile.gender.charAt(0).toUpperCase() + profile.gender.slice(1) : 'Não definido'}
               </p>
+            </div>
+
+            <div>
+              <p className={fieldLabel}>Nº de telemóvel</p>
+              <p className={fieldValue}>{profile?.phone_hash ? 'Associado ✓' : 'Não associado'}</p>
             </div>
 
             <div>
