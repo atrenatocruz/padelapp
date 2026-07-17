@@ -123,12 +123,34 @@ export const AuthProvider = ({ children }) => {
 
       await consumePendingOrgSlug()
 
-      const { data: membershipData, error: membershipError } = await supabase
+      let { data: membershipData, error: membershipError } = await supabase
         .from('memberships')
         .select('*, organization:organizations(*)')
         .eq('user_id', userId)
 
       if (membershipError) throw membershipError
+
+      // Single-club phase: anyone who signs in with no membership at all
+      // (no invite link, no pending slug) auto-joins this one default club
+      // instead of hitting a "pick a club" dead end. Sunset this by
+      // unsetting VITE_DEFAULT_ORG_SLUG once there's more than one real
+      // club — the invite-link/manual-join flow (Home.jsx) already
+      // handles that case and keeps working unchanged.
+      const defaultOrgSlug = import.meta.env.VITE_DEFAULT_ORG_SLUG
+      if ((membershipData?.length ?? 0) === 0 && defaultOrgSlug) {
+        const { error: autoJoinError } = await supabase.rpc('join_organization', { p_slug: defaultOrgSlug })
+        if (autoJoinError) {
+          console.error('Failed to auto-join default organization:', autoJoinError)
+        } else {
+          const { data: refetched, error: refetchError } = await supabase
+            .from('memberships')
+            .select('*, organization:organizations(*)')
+            .eq('user_id', userId)
+          if (refetchError) throw refetchError
+          membershipData = refetched
+        }
+      }
+
       setMemberships(membershipData || [])
 
       // Keep the previously-selected org if still a member of it, otherwise
