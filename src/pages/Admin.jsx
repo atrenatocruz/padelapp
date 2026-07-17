@@ -169,13 +169,17 @@ export default function Admin() {
     
     try {
       const { data: { user } } = await supabase.auth.getUser()
-      
+      // num_courts is kept as a raw string in gameForm while the admin is
+      // typing (see the input's onChange) — clamp it to a valid 1-6 count
+      // here, at submit time, rather than on every keystroke.
+      const numCourts = Math.min(6, Math.max(1, parseInt(gameForm.num_courts, 10) || 1))
+
       console.log('Creating game with data:', {
         ...gameForm,
         created_by: user.id,
         status: 'open'
       })
-      
+
       const { data, error } = await supabase
         .from('games')
         .insert([
@@ -184,7 +188,8 @@ export default function Admin() {
             organization_id: currentOrganizationId,
             // datetime-local is Portugal wall-clock; store the real instant
             date: new Date(gameForm.date).toISOString(),
-            max_players: gameForm.num_courts * 4, // derived
+            num_courts: numCourts,
+            max_players: numCourts * 4, // derived
             created_by: user.id,
             status: 'open'
           }
@@ -210,12 +215,17 @@ export default function Admin() {
     e.preventDefault()
     
     try {
+      // See handleCreateGame — num_courts is a raw string while typing,
+      // clamped to a valid 1-6 count here at submit time.
+      const numCourts = Math.min(6, Math.max(1, parseInt(gameForm.num_courts, 10) || 1))
+
       const { error } = await supabase
         .from('games')
         .update({
           ...gameForm,
           date: new Date(gameForm.date).toISOString(),
-          max_players: gameForm.num_courts * 4,
+          num_courts: numCourts,
+          max_players: numCourts * 4,
         })
         .eq('id', editingGame.id)
 
@@ -443,7 +453,7 @@ export default function Admin() {
                       <input
                         type="number"
                         value={gameForm.num_courts}
-                        onChange={(e) => setGameForm({ ...gameForm, num_courts: Math.max(1, parseInt(e.target.value) || 1) })}
+                        onChange={(e) => setGameForm({ ...gameForm, num_courts: e.target.value })}
                         className="input-field"
                         min="1"
                         max="6"
