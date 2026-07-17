@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { User, Award, Trophy, Target, Flame, LogOut } from 'lucide-react'
+import { User, Award, Trophy, Target, Flame, LogOut, Camera } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { hashPhone } from '../lib/hashPhone'
-import { PrimaryButton, LevelBadge, GuestBadge, DateField } from '../components/ui'
+import { uploadAvatar, removeAvatar } from '../lib/avatarStorage'
+import { PrimaryButton, LevelBadge, GuestBadge, DateField, Avatar } from '../components/ui'
 
 export default function Profile() {
   const { profile, updateProfile, updateMembership, currentMembership, currentOrganizationId, isGuest, signOut } = useAuth()
@@ -20,6 +21,9 @@ export default function Profile() {
   const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const [photoError, setPhotoError] = useState('')
+  const fileInputRef = useRef(null)
 
   useEffect(() => {
     if (profile) {
@@ -47,6 +51,39 @@ export default function Profile() {
       setStats(data)
     } catch (error) {
       console.error('Error loading stats:', error)
+    }
+  }
+
+  const handlePhotoSelect = async (e) => {
+    const file = e.target.files?.[0]
+    e.target.value = '' // allow re-selecting the same file later
+    if (!file) return
+    setPhotoError('')
+    setUploadingPhoto(true)
+    try {
+      const avatar_url = await uploadAvatar(profile.id, file)
+      const { error } = await updateProfile({ avatar_url })
+      if (error) throw error
+    } catch (error) {
+      console.error('Error uploading photo:', error)
+      setPhotoError('Não foi possível carregar a foto. Tenta novamente.')
+    } finally {
+      setUploadingPhoto(false)
+    }
+  }
+
+  const handleRemovePhoto = async () => {
+    setPhotoError('')
+    setUploadingPhoto(true)
+    try {
+      await removeAvatar(profile.id)
+      const { error } = await updateProfile({ avatar_url: null })
+      if (error) throw error
+    } catch (error) {
+      console.error('Error removing photo:', error)
+      setPhotoError('Não foi possível remover a foto. Tenta novamente.')
+    } finally {
+      setUploadingPhoto(false)
     }
   }
 
@@ -107,8 +144,8 @@ export default function Profile() {
             <line x1="200" y1="-60" x2="200" y2="200" stroke="currentColor" strokeWidth="3" />
           </svg>
           <div className="relative py-2">
-            <div className="w-20 h-20 bg-volt-400 text-court-900 rounded-full flex items-center justify-center mx-auto mb-3 text-3xl font-extrabold">
-              {profile?.name?.charAt(0).toUpperCase()}
+            <div className="w-20 h-20 mx-auto mb-3">
+              <Avatar name={profile?.name} url={profile?.avatar_url} size="w-20 h-20 text-3xl" colorClass="bg-volt-400 text-court-900" />
             </div>
             <h2 className="text-2xl text-white">
               {profile?.name} <span className="text-court-200 font-normal">(Convidado)</span>
@@ -155,15 +192,52 @@ export default function Profile() {
           <line x1="200" y1="-60" x2="200" y2="200" stroke="currentColor" strokeWidth="3" />
         </svg>
         <div className="relative py-2">
-          <div className="w-20 h-20 bg-volt-400 text-court-900 rounded-full flex items-center justify-center mx-auto mb-3 text-3xl font-extrabold">
-            {profile?.name?.charAt(0).toUpperCase()}
+          <div className="relative w-20 h-20 mx-auto mb-3">
+            <Avatar name={profile?.name} url={profile?.avatar_url} size="w-20 h-20 text-3xl" colorClass="bg-volt-400 text-court-900" />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploadingPhoto}
+              aria-label="Alterar foto de perfil"
+              className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-court-900 text-white flex items-center justify-center
+                         ring-2 ring-court-900 hover:bg-court-700 transition-colors duration-fast disabled:opacity-50"
+            >
+              {uploadingPhoto ? (
+                <span className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+              ) : (
+                <Camera size={14} />
+              )}
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handlePhotoSelect}
+              className="hidden"
+            />
           </div>
           <h2 className="text-2xl text-white">{profile?.name}</h2>
           <div className="mt-2.5">
             <LevelBadge level={currentMembership?.level} me size="md" />
           </div>
+          {profile?.avatar_url && (
+            <button
+              type="button"
+              onClick={handleRemovePhoto}
+              disabled={uploadingPhoto}
+              className="mt-2 text-court-200 text-xs font-extrabold hover:text-white transition-colors duration-fast disabled:opacity-50"
+            >
+              Remover foto
+            </button>
+          )}
         </div>
       </div>
+
+      {photoError && (
+        <div className="bg-danger/10 text-danger px-4 py-3 rounded-ctrl text-sm font-extrabold animate-fade-up">
+          {photoError}
+        </div>
+      )}
 
       {saved && (
         <div className="bg-ok/10 text-ok px-4 py-3 rounded-ctrl text-sm font-extrabold animate-fade-up">
