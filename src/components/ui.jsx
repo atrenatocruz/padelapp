@@ -136,18 +136,18 @@ export function LevelBadge({ level, range, me = false, size = 'sm' }) {
 
 /* ─── GuestBadge ─────────────────────────────────────────────────────────
    Marks non-regular players inside game participant lists. */
-export function GuestBadge({ size = 'sm' }) {
+export function GuestBadge({ size = 'sm', label = 'Convidado' }) {
   const sizes = {
     sm: 'text-[11px] px-2 py-0.5',
     md: 'text-sm px-3 py-1',
   }
   return (
     <span
-      title="Jogador convidado"
+      title={label === 'Teste' ? 'Jogador de teste (admin)' : 'Jogador convidado'}
       className={`inline-flex items-center rounded-full font-extrabold tracking-wide uppercase
                   border border-dashed border-court-200 bg-sand text-muted ${sizes[size]}`}
     >
-      Convidado
+      {label}
     </span>
   )
 }

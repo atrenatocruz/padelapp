@@ -34,6 +34,7 @@ export default function GameDetails() {
   const [swapPick, setSwapPick] = useState(null) // { teamId, slot: 'player1_id'|'player2_id' }
   const [showShare, setShowShare] = useState(false)
   const [mixStats, setMixStats] = useState([])
+  const [addingTestUser, setAddingTestUser] = useState(false)
 
   useEffect(() => {
     loadGameDetails()
@@ -75,14 +76,14 @@ export default function GameDetails() {
       // person.is_guest, player1.is_guest, ...) stays unchanged.
       const { data: memberRows, error: memberError } = await supabase
         .from('memberships')
-        .select('user_id, level, is_guest')
+        .select('user_id, level, is_guest, is_test')
         .eq('organization_id', gameData.organization_id)
       if (memberError) throw memberError
       const membershipByUser = new Map((memberRows || []).map((m) => [m.user_id, m]))
       const attachMembership = (p) => {
         if (!p) return p
         const m = membershipByUser.get(p.id)
-        return { ...p, level: m?.level, is_guest: m?.is_guest ?? false }
+        return { ...p, level: m?.level, is_guest: m?.is_guest ?? false, is_test: m?.is_test ?? false }
       }
 
       const { data: participantsData, error: participantsError } = await supabase
@@ -225,6 +226,29 @@ export default function GameDetails() {
       setJoinError('Não conseguimos inscrever-te. Tenta novamente.')
     } finally {
       setJoining(false)
+    }
+  }
+
+  const handleAddTestUser = async () => {
+    setAddingTestUser(true)
+    setJoinError('')
+    try {
+      const { data, error } = await supabase.functions.invoke('admin-create-test-user', {
+        body: { organization_id: currentOrganizationId },
+      })
+      if (error) throw error
+
+      const { error: participantError } = await supabase
+        .from('participants')
+        .insert([{ game_id: id, user_id: data.user_id, status: 'confirmed', joined_alone: true }])
+      if (participantError) throw participantError
+
+      loadGameDetails()
+    } catch (error) {
+      console.error('Error adding test user:', error)
+      setJoinError('Não foi possível adicionar o jogador de teste.')
+    } finally {
+      setAddingTestUser(false)
     }
   }
 
@@ -1021,7 +1045,7 @@ export default function GameDetails() {
                     </p>
                   </div>
                   {person.is_guest
-                    ? <GuestBadge />
+                    ? <GuestBadge label={person.is_test ? 'Teste' : 'Convidado'} />
                     : <LevelBadge level={person.level} />}
                   {isAdmin && (
                     <button
@@ -1047,6 +1071,18 @@ export default function GameDetails() {
             <div className="bg-danger/10 text-danger px-4 py-3 rounded-ctrl text-sm font-extrabold animate-fade-up">
               {joinError}
             </div>
+          )}
+
+          {isAdmin && peopleCount < capacity && (
+            <PrimaryButton
+              variant="ghost"
+              onClick={handleAddTestUser}
+              disabled={addingTestUser}
+              className="w-full"
+            >
+              <UserPlus size={19} />
+              {addingTestUser ? 'A adicionar…' : 'Adicionar jogador de teste'}
+            </PrimaryButton>
           )}
 
           {canJoin && !joinMode && (
