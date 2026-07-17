@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
-import { MapPin, CheckCircle2, ChevronRight, Lock, Play, Calendar, X, Share2, MessageCircle, Link2 } from 'lucide-react'
+import { MapPin, CheckCircle2, ChevronRight, Lock, Play, Calendar, X, Share2, MessageCircle, Link2, Clock } from 'lucide-react'
 
 /* ─── Date fields ────────────────────────────────────────────────────────
    Native <input type=date/datetime-local> pickers render in the device
@@ -446,5 +446,98 @@ export function ShareModal({ title = 'Partilhar', message, url, onClose }) {
       </div>
     </div>,
     document.body
+  )
+}
+
+// Three short beeps via the Web Audio API — no bundled audio asset, works
+// offline as a PWA, and needs no license. Wrapped in try/catch: Web Audio
+// can be unavailable or blocked by autoplay policy on some browsers: the
+// visual "00:00" state is still enough of a signal if the beep is silently
+// skipped.
+function playRoundEndBeep() {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext
+    const ctx = new AudioCtx()
+    const now = ctx.currentTime
+    ;[0, 0.25, 0.5].forEach((offset) => {
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.type = 'sine'
+      osc.frequency.value = 880
+      gain.gain.setValueAtTime(0.001, now + offset)
+      gain.gain.exponentialRampToValueAtTime(0.3, now + offset + 0.02)
+      gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.2)
+      osc.connect(gain)
+      gain.connect(ctx.destination)
+      osc.start(now + offset)
+      osc.stop(now + offset + 0.25)
+    })
+  } catch {
+    // Web Audio unavailable — silent fallback.
+  }
+}
+
+/* Per-round countdown. Visible to everyone; the +/- adjust controls and
+   the expiry beep are admin-only. `startedAt`/`durationMinutes` come
+   straight from the `games` row, which every open device already receives
+   live via the existing Realtime subscription on games UPDATE — no new
+   sync mechanism needed here. */
+export function RoundTimer({ startedAt, durationMinutes, isAdmin, onAdjust }) {
+  const [now, setNow] = useState(Date.now())
+  const alertedRef = useRef(false)
+
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(interval)
+  }, [])
+
+  // Re-arm the alert whenever a new round starts, or the admin extends a
+  // round that had already rung once (so it can ring again at the new end).
+  useEffect(() => {
+    alertedRef.current = false
+  }, [startedAt, durationMinutes])
+
+  const endTime = startedAt ? new Date(startedAt).getTime() + (durationMinutes || 0) * 60000 : null
+  const remainingMs = endTime !== null ? Math.max(0, endTime - now) : null
+  const expired = remainingMs !== null && remainingMs <= 0
+
+  useEffect(() => {
+    if (expired && isAdmin && !alertedRef.current) {
+      alertedRef.current = true
+      playRoundEndBeep()
+    }
+  }, [expired, isAdmin])
+
+  if (!startedAt || !durationMinutes) return null
+
+  const totalSeconds = Math.ceil(remainingMs / 1000)
+  const mm = Math.floor(totalSeconds / 60).toString().padStart(2, '0')
+  const ss = (totalSeconds % 60).toString().padStart(2, '0')
+
+  return (
+    <div className={`inline-flex items-center gap-2 ${expired ? 'text-danger animate-pulse' : 'text-court-900'}`}>
+      <Clock size={16} className="shrink-0" />
+      <span className="font-extrabold tabular-nums text-sm">{mm}:{ss}</span>
+      {isAdmin && onAdjust && (
+        <div className="flex items-center gap-1 ml-1">
+          <button
+            type="button"
+            onClick={() => onAdjust(-5)}
+            aria-label="Menos 5 minutos"
+            className="w-6 h-6 flex items-center justify-center rounded-full bg-court-100 text-court-700 text-xs font-extrabold hover:bg-court-200 transition-colors duration-fast"
+          >
+            −5
+          </button>
+          <button
+            type="button"
+            onClick={() => onAdjust(5)}
+            aria-label="Mais 5 minutos"
+            className="w-6 h-6 flex items-center justify-center rounded-full bg-court-100 text-court-700 text-xs font-extrabold hover:bg-court-200 transition-colors duration-fast"
+          >
+            +5
+          </button>
+        </div>
+      )}
+    </div>
   )
 }
