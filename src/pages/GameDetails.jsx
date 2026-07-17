@@ -14,7 +14,7 @@ import { winRatePct } from '../lib/statsLogic'
 export default function GameDetails() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { user, profile, isGuest } = useAuth()
+  const { user, profile, isGuest, isAdmin, currentOrganizationId } = useAuth()
   const [game, setGame] = useState(null)
   const [participants, setParticipants] = useState([])
   const [teams, setTeams] = useState([])
@@ -33,8 +33,6 @@ export default function GameDetails() {
   const [swapPick, setSwapPick] = useState(null) // { teamId, slot: 'player1_id'|'player2_id' }
   const [showShare, setShowShare] = useState(false)
   const [mixStats, setMixStats] = useState([])
-
-  const isAdmin = profile?.is_admin === true
 
   useEffect(() => {
     loadGameDetails()
@@ -63,22 +61,35 @@ export default function GameDetails() {
     try {
       const { data: gameData, error: gameError } = await supabase
         .from('games')
-        .select(`
-          *,
-          results (*)
-        `)
+        .select('*')
         .eq('id', id)
         .single()
 
       if (gameError) throw gameError
       setGame(gameData)
 
+      // level/is_guest live on `memberships` now (per-org) — fetch this
+      // org's memberships once and merge onto every nested profile object
+      // below, so the rest of this component's shape (person.level,
+      // person.is_guest, player1.is_guest, ...) stays unchanged.
+      const { data: memberRows, error: memberError } = await supabase
+        .from('memberships')
+        .select('user_id, level, is_guest')
+        .eq('organization_id', gameData.organization_id)
+      if (memberError) throw memberError
+      const membershipByUser = new Map((memberRows || []).map((m) => [m.user_id, m]))
+      const attachMembership = (p) => {
+        if (!p) return p
+        const m = membershipByUser.get(p.id)
+        return { ...p, level: m?.level, is_guest: m?.is_guest ?? false }
+      }
+
       const { data: participantsData, error: participantsError } = await supabase
         .from('participants')
         .select(`
           *,
-          user:profiles!participants_user_id_fkey (id, name, level, is_guest, preferred_side),
-          partner:profiles!participants_partner_id_fkey (id, name, level, is_guest, preferred_side)
+          user:profiles!participants_user_id_fkey (id, name, preferred_side),
+          partner:profiles!participants_partner_id_fkey (id, name, preferred_side)
         `)
         .eq('game_id', id)
         .eq('status', 'confirmed')
@@ -90,8 +101,8 @@ export default function GameDetails() {
         .from('teams')
         .select(`
           *,
-          player1:profiles!teams_player1_id_fkey (id, name, is_guest),
-          player2:profiles!teams_player2_id_fkey (id, name, is_guest)
+          player1:profiles!teams_player1_id_fkey (id, name),
+          player2:profiles!teams_player2_id_fkey (id, name)
         `)
         .eq('game_id', id)
 
@@ -102,15 +113,23 @@ export default function GameDetails() {
         .order('round_number')
         .order('court_number')
 
-      setParticipants(participantsData || [])
-      setTeams(teamsData || [])
+      setParticipants((participantsData || []).map((p) => ({
+        ...p,
+        user: attachMembership(p.user),
+        partner: attachMembership(p.partner),
+      })))
+      setTeams((teamsData || []).map((t) => ({
+        ...t,
+        player1: attachMembership(t.player1),
+        player2: attachMembership(t.player2),
+      })))
       setMatches(matchesData || [])
 
       // Per-mix leaderboard — only exists once the mix has been finalized
       if (gameData.status === 'finished') {
         const { data: statsData } = await supabase
           .from('mix_player_stats')
-          .select('*, user:profiles!mix_player_stats_user_id_fkey (name, level)')
+          .select('*, user:profiles!mix_player_stats_user_id_fkey (name)')
           .eq('game_id', id)
           .order('points_earned', { ascending: false })
           .order('matches_won', { ascending: false })
@@ -126,17 +145,21 @@ export default function GameDetails() {
   }
 
   const loadAllUsers = async () => {
+    if (!currentOrganizationId) return
     try {
-      // Partner picker is a global player list — guests never appear in it
+      // Partner picker is this org's member list — guests never appear in it
       const { data, error } = await supabase
-        .from('profiles')
-        .select('id, name')
+        .from('memberships')
+        .select('user_id, profile:profiles(id, name)')
+        .eq('organization_id', currentOrganizationId)
         .eq('is_guest', false)
-        .neq('id', user.id)
-        .order('name')
+        .neq('user_id', user.id)
 
       if (error) throw error
-      setAllUsers(data || [])
+      const list = (data || [])
+        .map((m) => ({ id: m.user_id, name: m.profile?.name || 'Jogador' }))
+        .sort((a, b) => a.name.localeCompare(b.name))
+      setAllUsers(list)
     } catch (error) {
       console.error('Error loading users:', error)
     }
@@ -315,6 +338,7 @@ export default function GameDetails() {
       const { data: statsRows } = await supabase
         .from('player_stats')
         .select('user_id, mix_wins, game_wins, game_losses')
+        .eq('organization_id', currentOrganizationId)
         .in('user_id', playerIds)
       const statsById = Object.fromEntries((statsRows || []).map(s => [s.user_id, s]))
 
@@ -700,16 +724,6 @@ export default function GameDetails() {
               </div>
             ))}
           </div>
-        </div>
-      )}
-
-      {/* Legacy result (jogos antigos) */}
-      {game.status === 'completed' && game.results?.length > 0 && (
-        <div className="card bg-court-900 text-center">
-          <p className="text-court-200 text-xs font-extrabold uppercase tracking-widest mb-2">Resultado final</p>
-          <p className="text-4xl font-extrabold text-white tabular-nums">
-            {game.results[0].team1_score} <span className="text-court-200">–</span> {game.results[0].team2_score}
-          </p>
         </div>
       )}
 

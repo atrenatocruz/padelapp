@@ -62,7 +62,7 @@ function Segmented({ options, value, onChange }) {
 }
 
 export default function Admin() {
-  const { profile: currentUser } = useAuth()
+  const { profile: currentUser, currentOrganizationId } = useAuth()
   const [activeTab, setActiveTab] = useState('games') // 'games', 'members', 'settings'
   const [games, setGames] = useState([])
   const [members, setMembers] = useState([])
@@ -75,8 +75,8 @@ export default function Admin() {
   const [gameForm, setGameForm] = useState(EMPTY_GAME_FORM)
 
   useEffect(() => {
-    loadData()
-  }, [activeTab])
+    if (currentOrganizationId) loadData()
+  }, [activeTab, currentOrganizationId])
 
   const loadData = async () => {
     setLoading(true)
@@ -106,13 +106,14 @@ export default function Admin() {
             status
           )
         `)
+        .eq('organization_id', currentOrganizationId)
         .order('date', { ascending: false })
 
       if (error) {
         console.error('Error loading games:', error)
         throw error
       }
-      
+
       console.log('Admin games loaded:', data)
       setGames(data || [])
     } catch (error) {
@@ -121,27 +122,39 @@ export default function Admin() {
     }
   }
 
+  // Members live on `memberships` now (is_admin/is_guest/level are per-org),
+  // joined with `profiles` for the display name — player_stats isn't shown
+  // here so it isn't fetched.
   const loadMembers = async () => {
     const { data, error } = await supabase
-      .from('profiles')
-      .select(`
-        *,
-        player_stats (*)
-      `)
+      .from('memberships')
+      .select('id, is_admin, is_guest, level, user_id, profile:profiles(*)')
+      .eq('organization_id', currentOrganizationId)
       .eq('is_guest', false)
-      .order('name')
 
     if (error) {
       console.error('Error loading members:', error)
       return
     }
-    setMembers(data || [])
+
+    const merged = (data || [])
+      .map((m) => ({
+        id: m.user_id,
+        name: m.profile?.name || 'Jogador',
+        is_admin: m.is_admin,
+        is_guest: m.is_guest,
+        level: m.level,
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name))
+
+    setMembers(merged)
   }
 
   const loadSettings = async () => {
     const { data, error } = await supabase
-      .from('settings')
+      .from('organizations')
       .select('*')
+      .eq('id', currentOrganizationId)
       .single()
 
     if (error) {
@@ -168,6 +181,7 @@ export default function Admin() {
         .insert([
           {
             ...gameForm,
+            organization_id: currentOrganizationId,
             // datetime-local is Portugal wall-clock; store the real instant
             date: new Date(gameForm.date).toISOString(),
             max_players: gameForm.num_courts * 4, // derived
@@ -237,7 +251,8 @@ export default function Admin() {
 
   const handleToggleAdmin = async (userId, currentStatus) => {
     try {
-      const { error } = await supabase.rpc('admin_set_admin', {
+      const { error } = await supabase.rpc('admin_set_membership_admin', {
+        p_organization_id: currentOrganizationId,
         p_user_id: userId,
         p_is_admin: !currentStatus,
       })
@@ -254,30 +269,32 @@ export default function Admin() {
 
   const handleDeleteUser = async (member) => {
     if (!confirm(
-      `Remover ${member.name} permanentemente?\n\n` +
-      `Isto apaga a conta e todo o histórico deste jogador (inscrições, duplas, estatísticas). ` +
-      `Não pode ser revertido.`
+      `Remover ${member.name} deste clube?\n\n` +
+      `A conta e as inscrições/estatísticas noutros clubes (se os houver) mantêm-se — isto só remove a ligação a este clube.`
     )) return
 
     try {
-      const { error } = await supabase.rpc('admin_delete_user', { p_user_id: member.id })
+      const { error } = await supabase.rpc('admin_remove_member', {
+        p_organization_id: currentOrganizationId,
+        p_user_id: member.id,
+      })
       if (error) throw error
       loadMembers()
     } catch (error) {
-      console.error('Error deleting user:', error)
-      alert('Erro ao remover utilizador: ' + error.message)
+      console.error('Error removing member:', error)
+      alert('Erro ao remover membro: ' + error.message)
     }
   }
 
   const handleUpdateSettings = async (e) => {
     e.preventDefault()
-    
+
     try {
       const { error } = await supabase
-        .from('settings')
+        .from('organizations')
         .update({
           robot_contact: settings.robot_contact,
-          group_name: settings.group_name,
+          name: settings.name,
           points_rules: settings.points_rules
         })
         .eq('id', settings.id)
@@ -580,7 +597,7 @@ export default function Admin() {
                         )}
                       </h3>
                       <p className="text-sm text-muted truncate">
-                        Nível: {member.level} • {member.phone || 'Sem contacto'}
+                        Nível: {member.level}
                       </p>
                     </div>
 
@@ -621,8 +638,8 @@ export default function Admin() {
                   </label>
                   <input
                     type="text"
-                    value={settings.group_name}
-                    onChange={(e) => setSettings({ ...settings, group_name: e.target.value })}
+                    value={settings.name}
+                    onChange={(e) => setSettings({ ...settings, name: e.target.value })}
                     className="input-field"
                     required
                   />

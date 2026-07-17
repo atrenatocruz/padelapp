@@ -1,15 +1,49 @@
--- Os Padeleiros / Alinho — multi-tenant schema
--- Tenant boundary = organization_id, via the `memberships` join table
--- (a person can belong to more than one organization at once — that's
--- the whole reason this isn't a database-per-tenant design).
+-- ════════════════════════════════════════════════════════════════════════
+-- Migration: multi-tenant rebuild (clean slate — current data is test
+-- data only, confirmed disposable). Run this whole file in Supabase →
+-- SQL Editor → New query → Run.
+--
+-- This DROPS every existing table and function from the single-tenant
+-- schema and replaces them with the multi-tenant one (see
+-- docs/superpowers/specs/2026-07-16-multi-tenant-design.md and
+-- supabase/schema.sql, which this file mirrors exactly).
+-- ════════════════════════════════════════════════════════════════════════
+
+-- ── 1. Drop everything from the old single-tenant schema ────────────────
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+
+DROP TABLE IF EXISTS mix_player_stats CASCADE;
+DROP TABLE IF EXISTS matches CASCADE;
+DROP TABLE IF EXISTS teams CASCADE;
+DROP TABLE IF EXISTS results CASCADE;
+DROP TABLE IF EXISTS player_stats CASCADE;
+DROP TABLE IF EXISTS participants CASCADE;
+DROP TABLE IF EXISTS games CASCADE;
+DROP TABLE IF EXISTS settings CASCADE;
+DROP TABLE IF EXISTS profiles CASCADE;
+
+DROP FUNCTION IF EXISTS check_game_full() CASCADE;
+DROP FUNCTION IF EXISTS check_game_reopen() CASCADE;
+DROP FUNCTION IF EXISTS update_player_stats() CASCADE;
+DROP FUNCTION IF EXISTS public.handle_new_user() CASCADE;
+DROP FUNCTION IF EXISTS finalize_mix(UUID, UUID) CASCADE;
+DROP FUNCTION IF EXISTS admin_delete_user(UUID) CASCADE;
+DROP FUNCTION IF EXISTS admin_set_admin(UUID, BOOLEAN) CASCADE;
+DROP FUNCTION IF EXISTS mix_head_to_head(UUID) CASCADE;
+DROP FUNCTION IF EXISTS mix_head_to_head_matches(UUID, UUID) CASCADE;
+DROP FUNCTION IF EXISTS assign_game_short_code() CASCADE;
+DROP FUNCTION IF EXISTS prevent_self_admin_escalation() CASCADE;
+
+-- ── 2. Apply the new multi-tenant schema ─────────────────────────────────
+-- (identical to supabase/schema.sql — kept in sync manually; schema.sql
+-- is the source of truth for what a fresh install looks like)
 
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- ── Organizations (clubs) ──────────────────────────────────────────────
 CREATE TABLE organizations (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   name TEXT NOT NULL,
-  slug TEXT UNIQUE NOT NULL, -- used in signup links: padel.app/entrar?org=<slug>
+  slug TEXT UNIQUE NOT NULL,
   whatsapp_group_jid TEXT,
   robot_contact TEXT,
   group_logo_url TEXT,
@@ -18,12 +52,6 @@ CREATE TABLE organizations (
   created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW())
 );
 
--- ── Profiles — pure identity, no per-club fields ─────────────────────────
--- is_admin/is_guest/level all moved to `memberships`: they're per-club,
--- not global facts about a person. `name` is a nickname, not necessarily
--- the person's legal name. `phone_hash` is an HMAC-SHA256 hex digest,
--- computed OUTSIDE Supabase (see whatsapp-bot's hashing service, Phase 2)
--- — the raw phone number is never sent to or stored in Supabase.
 CREATE TABLE profiles (
   id UUID PRIMARY KEY REFERENCES auth.users ON DELETE CASCADE,
   name TEXT NOT NULL,
@@ -35,52 +63,48 @@ CREATE TABLE profiles (
   created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW())
 );
 
--- ── Memberships — the actual tenant boundary for people ──────────────────
 CREATE TABLE memberships (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   is_admin BOOLEAN NOT NULL DEFAULT FALSE,
   is_guest BOOLEAN NOT NULL DEFAULT FALSE,
-  level TEXT NOT NULL DEFAULT 'iniciante', -- iniciante, intermédio, avançado (ou N2-N6)
+  level TEXT NOT NULL DEFAULT 'iniciante',
   created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW()),
   UNIQUE (user_id, organization_id)
 );
 
--- ── Games (mixes) ─────────────────────────────────────────────────────
 CREATE TABLE games (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   organization_id UUID NOT NULL REFERENCES organizations(id),
   title TEXT NOT NULL,
   date TIMESTAMPTZ NOT NULL,
   location TEXT,
-  max_players INTEGER DEFAULT 4, -- derived = num_courts * 4, written by the app
+  max_players INTEGER DEFAULT 4,
   num_courts INTEGER NOT NULL DEFAULT 1,
   court_time_minutes INTEGER NOT NULL DEFAULT 90,
   game_time_minutes INTEGER NOT NULL DEFAULT 20,
   format TEXT NOT NULL DEFAULT 'sobe_desce' CHECK (format IN ('sobe_desce', 'todos_contra_todos')),
-  status TEXT DEFAULT 'open', -- open, closed, in_progress, finished, cancelled
+  status TEXT DEFAULT 'open',
   winner_team_id UUID,
   created_by UUID REFERENCES profiles(id),
   created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW()),
   updated_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW())
 );
 
--- ── Participants (signups) ────────────────────────────────────────────
 CREATE TABLE participants (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   game_id UUID REFERENCES games(id) ON DELETE CASCADE,
   user_id UUID REFERENCES profiles(id),
   partner_id UUID REFERENCES profiles(id),
   team_number INTEGER,
-  status TEXT DEFAULT 'pending', -- pending, confirmed, cancelled
+  status TEXT DEFAULT 'pending',
   joined_alone BOOLEAN DEFAULT TRUE,
   created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW())
 );
 
 CREATE UNIQUE INDEX participants_game_user_key ON participants(game_id, user_id);
 
--- ── Teams (duplas) and matches (jogos sorteados dentro do mix) ──────────
 CREATE TABLE teams (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   game_id UUID NOT NULL REFERENCES games(id) ON DELETE CASCADE,
@@ -104,10 +128,6 @@ CREATE TABLE matches (
   created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW())
 );
 
--- ── Player stats & mix stats — per organization, never blended ──────────
--- Only the columns finalize_mix() actually writes; the pre-mix-engine
--- columns (games_played, games_won, total_points_scored/conceded, rating)
--- were dead weight — confirmed unused anywhere in the frontend — dropped.
 CREATE TABLE player_stats (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID NOT NULL REFERENCES profiles(id),
@@ -134,10 +154,6 @@ CREATE TABLE mix_player_stats (
   UNIQUE (game_id, user_id)
 );
 
--- ════════════════════════════════════════════════════════════════════════
--- Row Level Security
--- ════════════════════════════════════════════════════════════════════════
-
 ALTER TABLE organizations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE memberships ENABLE ROW LEVEL SECURITY;
@@ -148,9 +164,6 @@ ALTER TABLE matches ENABLE ROW LEVEL SECURITY;
 ALTER TABLE player_stats ENABLE ROW LEVEL SECURITY;
 ALTER TABLE mix_player_stats ENABLE ROW LEVEL SECURITY;
 
--- organizations: members can see their own org(s); no direct INSERT policy
--- (org creation is manual, via SQL editor, for now — see decisions doc).
--- Admins of an org can update its own settings row.
 CREATE POLICY "Members can view their organizations"
   ON organizations FOR SELECT
   USING (EXISTS (
@@ -166,10 +179,6 @@ CREATE POLICY "Org admins can update their organization"
       AND memberships.user_id = auth.uid() AND memberships.is_admin
   ));
 
--- profiles: yourself, or anyone who shares at least one org with you.
--- (No direct INSERT/UPDATE-of-others policy needed — signup creates your
--- own row via the trigger below, SECURITY DEFINER; you update your own
--- row via `auth.uid() = id`.)
 CREATE POLICY "See own profile or profiles of org-mates"
   ON profiles FOR SELECT
   USING (
@@ -186,7 +195,6 @@ CREATE POLICY "Users can update own profile"
   USING (auth.uid() = id)
   WITH CHECK (auth.uid() = id);
 
--- memberships: see your own rows, or every row in an org where you're admin.
 CREATE POLICY "See own memberships"
   ON memberships FOR SELECT
   USING (user_id = auth.uid());
@@ -199,7 +207,6 @@ CREATE POLICY "Org admins see all memberships in their org"
       AND m2.user_id = auth.uid() AND m2.is_admin
   ));
 
--- games: members of the org can view; org admins can create/update/delete.
 CREATE POLICY "Org members can view games"
   ON games FOR SELECT
   USING (EXISTS (
@@ -231,8 +238,6 @@ CREATE POLICY "Org admins can delete games"
       AND memberships.user_id = auth.uid() AND memberships.is_admin
   ));
 
--- participants / teams / matches: scoped via games.organization_id — one
--- source of truth, no denormalized organization_id copy to go stale.
 CREATE POLICY "Org members can view participants"
   ON participants FOR SELECT
   USING (EXISTS (
@@ -305,9 +310,6 @@ CREATE POLICY "Org admins manage matches"
     WHERE games.id = matches.game_id AND memberships.user_id = auth.uid() AND memberships.is_admin
   ));
 
--- player_stats / mix_player_stats: org-scoped directly (they carry their
--- own organization_id). Read-only from the app — only finalize_mix()
--- (SECURITY DEFINER) writes to these.
 CREATE POLICY "Org members can view player stats"
   ON player_stats FOR SELECT
   USING (EXISTS (
@@ -322,13 +324,6 @@ CREATE POLICY "Org members can view mix player stats"
     WHERE memberships.organization_id = mix_player_stats.organization_id AND memberships.user_id = auth.uid()
   ));
 
--- ════════════════════════════════════════════════════════════════════════
--- Functions & triggers
--- ════════════════════════════════════════════════════════════════════════
-
--- Auto-close a game once every court is full. SECURITY DEFINER: the
--- joining player isn't a games-admin, so without this the UPDATE below
--- would be silently blocked by "Org admins can update games."
 CREATE OR REPLACE FUNCTION check_game_full()
 RETURNS TRIGGER AS $$
 DECLARE
@@ -354,7 +349,6 @@ CREATE TRIGGER game_full_trigger
 AFTER INSERT OR UPDATE ON participants
 FOR EACH ROW EXECUTE FUNCTION check_game_full();
 
--- Reopen a closed (not started) game when someone leaves and frees a slot.
 CREATE OR REPLACE FUNCTION check_game_reopen()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -371,9 +365,6 @@ CREATE TRIGGER game_reopen_trigger
 AFTER DELETE ON participants
 FOR EACH ROW EXECUTE FUNCTION check_game_reopen();
 
--- Create a profile (identity only — no membership) on signup. Attaching
--- to an organization is a separate step (see join_organization below),
--- used uniformly by both email and Google sign-in.
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -394,13 +385,6 @@ CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
--- Attaches the CALLING user to an organization by slug — the one
--- mechanism used by both signup flows (email/password and Google), since
--- OAuth sign-in can't carry custom fields through raw_user_meta_data the
--- way email signUp can. Idempotent: calling it twice for the same org is
--- a no-op. Knowing the slug is the whole invitation model for now (manual
--- onboarding, 2-5 clients) — this isn't meant to survive public self-serve
--- scale without hardening (e.g. real invite codes) later.
 CREATE OR REPLACE FUNCTION join_organization(p_slug TEXT)
 RETURNS UUID AS $$
 DECLARE
@@ -422,7 +406,6 @@ $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 REVOKE EXECUTE ON FUNCTION join_organization(TEXT) FROM anon, public;
 GRANT EXECUTE ON FUNCTION join_organization(TEXT) TO authenticated;
 
--- Finalize RPC (transactional ranking update, per-organization).
 CREATE OR REPLACE FUNCTION finalize_mix(p_game_id UUID, p_winner_team_id UUID)
 RETURNS void AS $$
 DECLARE
@@ -599,9 +582,6 @@ $$ LANGUAGE sql STABLE;
 REVOKE EXECUTE ON FUNCTION mix_head_to_head_matches(UUID, UUID, UUID) FROM anon, public;
 GRANT EXECUTE ON FUNCTION mix_head_to_head_matches(UUID, UUID, UUID) TO authenticated;
 
--- Admin: remove a member from THEIR org only (keeps the account and any
--- other org memberships intact). Full account deletion is a separate,
--- explicitly out-of-scope self-service RPC for a later privacy pass.
 CREATE OR REPLACE FUNCTION admin_remove_member(p_organization_id UUID, p_user_id UUID)
 RETURNS void AS $$
 BEGIN
@@ -622,7 +602,6 @@ $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 REVOKE EXECUTE ON FUNCTION admin_remove_member(UUID, UUID) FROM anon, public;
 GRANT EXECUTE ON FUNCTION admin_remove_member(UUID, UUID) TO authenticated;
 
--- Admin: promote/demote a member's admin status, scoped to one org.
 CREATE OR REPLACE FUNCTION admin_set_membership_admin(p_organization_id UUID, p_user_id UUID, p_is_admin BOOLEAN)
 RETURNS void AS $$
 BEGIN
@@ -643,3 +622,6 @@ $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 REVOKE EXECUTE ON FUNCTION admin_set_membership_admin(UUID, UUID, BOOLEAN) FROM anon, public;
 GRANT EXECUTE ON FUNCTION admin_set_membership_admin(UUID, UUID, BOOLEAN) TO authenticated;
+
+-- ── 3. Seed a test organization so there's something to sign up into ────
+INSERT INTO organizations (name, slug) VALUES ('Os Padeleiros', 'os-padeleiros');

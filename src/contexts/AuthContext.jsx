@@ -13,11 +13,18 @@ const MOCK_ADMIN_PROFILE = {
   id: '00000000-0000-0000-0000-000000000000',
   email: 'admin@dev.local',
   name: 'Admin (Dev)',
-  phone: '000000000', // dummy — skips the mandatory-phone modal for the dev bypass
   gender: 'masculino',
-  level: 'avançado',
+  phone_hash: 'dev-bypass', // dummy — skips the mandatory-phone modal for the dev bypass
+}
+const MOCK_ADMIN_ORG_ID = '00000000-0000-0000-0000-0000000000aa'
+const MOCK_ADMIN_MEMBERSHIP = {
+  id: '00000000-0000-0000-0000-0000000000bb',
+  user_id: MOCK_ADMIN_USER.id,
+  organization_id: MOCK_ADMIN_ORG_ID,
   is_admin: true,
   is_guest: false,
+  level: 'avançado',
+  organization: { id: MOCK_ADMIN_ORG_ID, name: 'Dev Org', slug: 'dev-org' },
 }
 
 export const useAuth = () => {
@@ -31,6 +38,8 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null)
   const [profile, setProfile] = useState(null)
+  const [memberships, setMemberships] = useState([])
+  const [currentOrganizationId, setCurrentOrganizationId] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -38,6 +47,8 @@ export const AuthProvider = ({ children }) => {
     if (import.meta.env.DEV && localStorage.getItem(MOCK_ADMIN_KEY) === 'true') {
       setUser(MOCK_ADMIN_USER)
       setProfile(MOCK_ADMIN_PROFILE)
+      setMemberships([MOCK_ADMIN_MEMBERSHIP])
+      setCurrentOrganizationId(MOCK_ADMIN_ORG_ID)
       setLoading(false)
       return
     }
@@ -59,6 +70,8 @@ export const AuthProvider = ({ children }) => {
         loadProfile(session.user.id)
       } else {
         setProfile(null)
+        setMemberships([])
+        setCurrentOrganizationId(null)
         setLoading(false)
       }
     })
@@ -66,23 +79,60 @@ export const AuthProvider = ({ children }) => {
     return () => subscription.unsubscribe()
   }, [])
 
+  // Consumes a pending org slug (if any) by attaching the now-authenticated
+  // user to that organization. Read from sessionStorage, NOT the live URL —
+  // App.jsx redirects away from /login the instant `user` is set, and for
+  // Google sign-in the auth-state-change → loadProfile chain races that
+  // client-side navigation, so by the time this runs window.location.search
+  // may already have been stripped. sessionStorage survives both that route
+  // change and the full-page OAuth redirect itself (Login.jsx writes it on
+  // mount, before anything can navigate away). Idempotent (DB-side ON
+  // CONFLICT DO NOTHING) and a no-op when nothing is pending.
+  const consumePendingOrgSlug = async () => {
+    const slug = sessionStorage.getItem('pendingOrgSlug')
+    if (!slug) return
+    sessionStorage.removeItem('pendingOrgSlug')
+
+    const { error } = await supabase.rpc('join_organization', { p_slug: slug })
+    if (error) console.error('Failed to join organization from pending slug:', error)
+  }
+
   const loadProfile = async (userId, retried = false) => {
     try {
-      const { data, error } = await supabase
+      const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
         .single()
 
-      if (error) {
+      if (profileError) {
         // Right after signup the profile trigger may not have committed yet — retry once.
-        if (error.code === 'PGRST116' && !retried) {
+        if (profileError.code === 'PGRST116' && !retried) {
           setTimeout(() => loadProfile(userId, true), 600)
           return
         }
-        throw error
+        throw profileError
       }
-      setProfile(data)
+      setProfile(profileData)
+
+      await consumePendingOrgSlug()
+
+      const { data: membershipData, error: membershipError } = await supabase
+        .from('memberships')
+        .select('*, organization:organizations(*)')
+        .eq('user_id', userId)
+
+      if (membershipError) throw membershipError
+      setMemberships(membershipData || [])
+
+      // Keep the previously-selected org if still a member of it, otherwise
+      // default to the first membership. No switcher UI yet (not needed
+      // until someone is regularly juggling 2+ orgs) — this is just the
+      // fallback selection logic.
+      setCurrentOrganizationId((prev) => {
+        if (prev && membershipData?.some((m) => m.organization_id === prev)) return prev
+        return membershipData?.[0]?.organization_id ?? null
+      })
     } catch (error) {
       console.error('Error loading profile:', error)
     } finally {
@@ -96,7 +146,7 @@ export const AuthProvider = ({ children }) => {
       password,
       options: {
         data: userData,
-        emailRedirectTo: window.location.origin,
+        emailRedirectTo: window.location.href,
       }
     })
     return { data, error }
@@ -111,10 +161,14 @@ export const AuthProvider = ({ children }) => {
   }
 
   const signInWithGoogle = async () => {
+    // Preserve the current URL (including ?org=<slug>, if present) through
+    // the OAuth round-trip — signInWithOAuth can't carry custom fields
+    // through raw_user_meta_data the way email signUp can, so the org slug
+    // has to survive in the redirect URL itself instead.
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: window.location.origin,
+        redirectTo: window.location.href,
       },
     })
     return { data, error }
@@ -124,6 +178,8 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem(MOCK_ADMIN_KEY, 'true')
     setUser(MOCK_ADMIN_USER)
     setProfile(MOCK_ADMIN_PROFILE)
+    setMemberships([MOCK_ADMIN_MEMBERSHIP])
+    setCurrentOrganizationId(MOCK_ADMIN_ORG_ID)
     setLoading(false)
   }
 
@@ -133,6 +189,8 @@ export const AuthProvider = ({ children }) => {
       localStorage.removeItem(MOCK_ADMIN_KEY)
       setUser(null)
       setProfile(null)
+      setMemberships([])
+      setCurrentOrganizationId(null)
       return { error: null }
     }
 
@@ -140,6 +198,8 @@ export const AuthProvider = ({ children }) => {
     if (!error) {
       setUser(null)
       setProfile(null)
+      setMemberships([])
+      setCurrentOrganizationId(null)
     }
     return { error }
   }
@@ -161,19 +221,63 @@ export const AuthProvider = ({ children }) => {
     return { data, error }
   }
 
+  // Updates the caller's membership row in the CURRENT organization (e.g.
+  // skill level — that lives per-org now, not on `profiles`).
+  const updateMembership = async (updates) => {
+    if (!user || !currentOrganizationId) return { error: new Error('No active organization') }
+
+    const { data, error } = await supabase
+      .from('memberships')
+      .update(updates)
+      .eq('user_id', user.id)
+      .eq('organization_id', currentOrganizationId)
+      .select('*, organization:organizations(*)')
+      .single()
+
+    if (!error) {
+      setMemberships((prev) => prev.map((m) => (m.id === data.id ? data : m)))
+    }
+
+    return { data, error }
+  }
+
+  // Attaches the current user to an organization by slug — used by both
+  // signup paths (email/password and Google) right after auth completes,
+  // whenever there's a pending ?org=<slug> to consume.
+  const joinOrganization = async (slug) => {
+    const { data, error } = await supabase.rpc('join_organization', { p_slug: slug })
+    if (!error && user) {
+      await loadProfile(user.id)
+    }
+    return { data, error }
+  }
+
+  const switchOrganization = (organizationId) => {
+    setCurrentOrganizationId(organizationId)
+  }
+
+  const currentMembership = memberships.find((m) => m.organization_id === currentOrganizationId) ?? null
+
   const value = {
     user,
     profile,
+    memberships,
+    currentOrganizationId,
+    currentOrganization: currentMembership?.organization ?? null,
+    currentMembership,
+    isAdmin: currentMembership?.is_admin === true,
+    isGuest: currentMembership?.is_guest === true,
     loading,
-    isGuest: profile?.is_guest === true,
     signUp,
     signIn,
     signInWithGoogle,
     signInAsAdmin,
     signOut,
     updateProfile,
+    updateMembership,
+    joinOrganization,
+    switchOrganization,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
-

@@ -13,7 +13,7 @@ const TABS = [
 ]
 
 export default function Rankings() {
-  const { profile } = useAuth()
+  const { profile, currentOrganizationId, currentOrganization } = useAuth()
   const [tab, setTab] = useState('geral')
   const [loading, setLoading] = useState(true)
 
@@ -30,22 +30,32 @@ export default function Rankings() {
   const [mixes, setMixes] = useState([])
 
   useEffect(() => {
+    if (!currentOrganizationId) return
     loadRankings()
     loadPlayers()
     loadMonthly()
     loadMixes()
-  }, [])
+  }, [currentOrganizationId])
+
+  // level/is_guest live on `memberships` now — this org's membership list,
+  // reused across every load* function below.
+  const loadMembershipMap = async () => {
+    const { data, error } = await supabase
+      .from('memberships')
+      .select('user_id, is_guest, level, profile:profiles(name)')
+      .eq('organization_id', currentOrganizationId)
+    if (error) throw error
+    return new Map((data || []).map((m) => [m.user_id, m]))
+  }
 
   const loadPlayers = async () => {
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, name, level')
-        .eq('is_guest', false)
-        .order('name')
-
-      if (error) throw error
-      setPlayers(data || [])
+      const membershipByUser = await loadMembershipMap()
+      const list = [...membershipByUser.entries()]
+        .filter(([, m]) => !m.is_guest)
+        .map(([userId, m]) => ({ id: userId, name: m.profile?.name || 'Jogador', level: m.level }))
+        .sort((a, b) => a.name.localeCompare(b.name))
+      setPlayers(list)
     } catch (error) {
       console.error('Error loading players:', error)
     }
@@ -53,26 +63,26 @@ export default function Rankings() {
 
   const loadRankings = async () => {
     try {
-      const { data, error } = await supabase
-        .from('player_stats')
-        .select(`
-          *,
-          user:profiles!player_stats_user_id_fkey!inner (name, level, is_guest)
-        `)
-        .eq('user.is_guest', false)
-
-      if (error) throw error
+      const [{ data: statsRows, error: statsError }, membershipByUser] = await Promise.all([
+        supabase.from('player_stats').select('*').eq('organization_id', currentOrganizationId),
+        loadMembershipMap(),
+      ])
+      if (statsError) throw statsError
 
       // Ranking: total points → mix wins → game wins → win rate
-      const rankedData = data
-        .map(player => {
-          const played = (player.game_wins || 0) + (player.game_losses || 0)
+      const rankedData = (statsRows || [])
+        .map((stat) => {
+          const m = membershipByUser.get(stat.user_id)
+          if (!m || m.is_guest) return null
+          const played = (stat.game_wins || 0) + (stat.game_losses || 0)
           return {
-            ...player,
+            ...stat,
+            user: { name: m.profile?.name, level: m.level },
             gamesPlayed: played,
-            winRate: winRatePct(player.game_wins || 0, played),
+            winRate: winRatePct(stat.game_wins || 0, played),
           }
         })
+        .filter(Boolean)
         .sort((a, b) =>
           (b.total_points || 0) - (a.total_points || 0) ||
           (b.mix_wins || 0) - (a.mix_wins || 0) ||
@@ -92,7 +102,8 @@ export default function Rankings() {
     try {
       const { data, error } = await supabase
         .from('mix_player_stats')
-        .select('*, user:profiles!mix_player_stats_user_id_fkey (name, level), game:games (date)')
+        .select('*, user:profiles!mix_player_stats_user_id_fkey (name), game:games (date)')
+        .eq('organization_id', currentOrganizationId)
 
       if (error) throw error
       const built = buildMonthlyLeaderboard(data || [])
@@ -105,21 +116,40 @@ export default function Rankings() {
 
   const loadMixes = async () => {
     try {
-      const { data, error } = await supabase
-        .from('games')
-        .select(`
-          *,
-          participants (
-            id, user_id, partner_id, status,
-            user:profiles!participants_user_id_fkey (name, level, is_guest),
-            partner:profiles!participants_partner_id_fkey (name, level, is_guest)
-          )
-        `)
-        .neq('status', 'cancelled')
-        .order('date', { ascending: false })
+      const [{ data, error }, membershipByUser] = await Promise.all([
+        supabase
+          .from('games')
+          .select(`
+            *,
+            participants (
+              id, user_id, partner_id, status,
+              user:profiles!participants_user_id_fkey (name),
+              partner:profiles!participants_partner_id_fkey (name)
+            )
+          `)
+          .eq('organization_id', currentOrganizationId)
+          .neq('status', 'cancelled')
+          .order('date', { ascending: false }),
+        loadMembershipMap(),
+      ])
 
       if (error) throw error
-      setMixes(data || [])
+
+      const attach = (person, userId) => {
+        if (!person) return person
+        const m = membershipByUser.get(userId)
+        return { ...person, level: m?.level, is_guest: m?.is_guest ?? false }
+      }
+      const withLevels = (data || []).map((game) => ({
+        ...game,
+        participants: (game.participants || []).map((p) => ({
+          ...p,
+          user: attach(p.user, p.user_id),
+          partner: attach(p.partner, p.partner_id),
+        })),
+      }))
+
+      setMixes(withLevels)
     } catch (error) {
       console.error('Error loading mixes:', error)
     }
@@ -149,7 +179,7 @@ export default function Rankings() {
   return (
     <div className="space-y-5">
       <div>
-        <p className="text-muted text-sm mb-0.5">Os Padeleiros</p>
+        <p className="text-muted text-sm mb-0.5">{currentOrganization?.name}</p>
         <h2 className="text-3xl text-court-900">Classificação</h2>
       </div>
 

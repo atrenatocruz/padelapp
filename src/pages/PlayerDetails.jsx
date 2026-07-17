@@ -2,12 +2,14 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Trophy, Target, Award, Swords, ChevronDown } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../contexts/AuthContext'
 import { PrimaryButton, LevelBadge, EmptyState } from '../components/ui'
 import { winRatePct } from '../lib/statsLogic'
 
 export default function PlayerDetails() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { currentOrganizationId } = useAuth()
   const [player, setPlayer] = useState(null)
   const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -18,20 +20,23 @@ export default function PlayerDetails() {
   const [h2hMatches, setH2hMatches] = useState([])
 
   useEffect(() => {
+    if (!currentOrganizationId) return
     loadPlayer()
     loadH2h()
-  }, [id])
+  }, [id, currentOrganizationId])
 
   const loadPlayer = async () => {
     setLoading(true)
     try {
-      const [{ data: profileData, error: profileError }, { data: statsData, error: statsError }] = await Promise.all([
-        supabase.from('profiles').select('id, name, level').eq('id', id).single(),
-        supabase.from('player_stats').select('*').eq('user_id', id).maybeSingle(),
+      const [{ data: profileData, error: profileError }, { data: membershipData, error: membershipError }, { data: statsData, error: statsError }] = await Promise.all([
+        supabase.from('profiles').select('id, name').eq('id', id).single(),
+        supabase.from('memberships').select('level').eq('user_id', id).eq('organization_id', currentOrganizationId).maybeSingle(),
+        supabase.from('player_stats').select('*').eq('user_id', id).eq('organization_id', currentOrganizationId).maybeSingle(),
       ])
       if (profileError) throw profileError
+      if (membershipError) throw membershipError
       if (statsError) throw statsError
-      setPlayer(profileData)
+      setPlayer({ ...profileData, level: membershipData?.level })
       setStats(statsData)
     } catch (error) {
       console.error('Error loading player:', error)
@@ -45,7 +50,10 @@ export default function PlayerDetails() {
     setExpandedOpponent(null)
     setH2hMatches([])
     try {
-      const { data, error } = await supabase.rpc('mix_head_to_head', { p_user_id: id })
+      const { data, error } = await supabase.rpc('mix_head_to_head', {
+        p_user_id: id,
+        p_organization_id: currentOrganizationId,
+      })
       if (error) throw error
       setH2h(data || [])
     } catch (error) {
@@ -65,6 +73,7 @@ export default function PlayerDetails() {
       const { data, error } = await supabase.rpc('mix_head_to_head_matches', {
         p_user_id: id,
         p_opponent_id: opponentId,
+        p_organization_id: currentOrganizationId,
       })
       if (error) throw error
       setH2hMatches(data || [])

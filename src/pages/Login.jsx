@@ -1,15 +1,29 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { PrimaryButton, DateField } from '../components/ui'
 import { Wordmark } from '../components/Layout'
+import { hashPhone } from '../lib/hashPhone'
 
 export default function Login() {
   const [mode, setMode] = useState('login') // 'login' or 'signup'
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const navigate = useNavigate()
-  const { signUp, signIn, signInWithGoogle, signInAsAdmin } = useAuth()
+  const [searchParams] = useSearchParams()
+  const { signUp, signIn, signInWithGoogle, signInAsAdmin, updateProfile } = useAuth()
+
+  // Capture ?org=<slug> into sessionStorage immediately on mount — it has
+  // to survive both a full-page Google OAuth redirect and App.jsx's
+  // instant client-side redirect away from /login once logged in, so
+  // reading it lazily later (e.g. inside an auth-state-change handler)
+  // isn't reliable. AuthContext consumes and clears it once a session exists.
+  useEffect(() => {
+    const orgSlug = searchParams.get('org')
+    if (orgSlug) {
+      sessionStorage.setItem('pendingOrgSlug', orgSlug)
+    }
+  }, [searchParams])
 
   const handleAdminBypass = () => {
     signInAsAdmin()
@@ -92,7 +106,6 @@ export default function Login() {
     try {
       const { error } = await signUp(signupEmail, signupPassword, {
         name: signupName,
-        phone: signupPhone,
         birthday: signupBirthday,
         gender: signupGender,
       })
@@ -102,6 +115,13 @@ export default function Login() {
       // Auto-login after signup
       const { error: loginError } = await signIn(signupEmail, signupPassword)
       if (loginError) throw loginError
+
+      // Hashing needs an authenticated session (the Edge Function rejects
+      // the anon key on purpose), so this can only happen after sign-in —
+      // still reads as one step to the user behind the single loading state.
+      const hash = await hashPhone(signupPhone)
+      const { error: profileError } = await updateProfile({ phone_hash: hash })
+      if (profileError) throw profileError
 
       navigate('/')
     } catch (err) {

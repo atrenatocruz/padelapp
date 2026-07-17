@@ -6,12 +6,11 @@ import { supabase } from '../lib/supabase'
 import { PrimaryButton, LevelBadge, GuestBadge, DateField } from '../components/ui'
 
 export default function Profile() {
-  const { profile, updateProfile, isGuest, signOut } = useAuth()
+  const { profile, updateProfile, updateMembership, currentMembership, currentOrganizationId, isGuest, signOut } = useAuth()
   const navigate = useNavigate()
   const [editing, setEditing] = useState(false)
   const [name, setName] = useState(profile?.name || '')
-  const [phone, setPhone] = useState(profile?.phone || '')
-  const [level, setLevel] = useState(profile?.level || 'iniciante')
+  const [level, setLevel] = useState(currentMembership?.level || 'iniciante')
   const [preferredSide, setPreferredSide] = useState(profile?.preferred_side || 'both')
   const [birthday, setBirthday] = useState(profile?.birthday || '')
   const [gender, setGender] = useState(profile?.gender || '')
@@ -22,16 +21,15 @@ export default function Profile() {
   useEffect(() => {
     if (profile) {
       setName(profile.name)
-      setPhone(profile.phone || '')
-      setLevel(profile.level)
+      setLevel(currentMembership?.level || 'iniciante')
       setPreferredSide(profile.preferred_side || 'both')
       setBirthday(profile.birthday || '')
       setGender(profile.gender || '')
-      if (!profile.is_guest) {
+      if (!isGuest && currentOrganizationId) {
         loadStats()
       }
     }
-  }, [profile])
+  }, [profile, currentMembership, currentOrganizationId])
 
   const loadStats = async () => {
     try {
@@ -39,6 +37,7 @@ export default function Profile() {
         .from('player_stats')
         .select('*')
         .eq('user_id', profile.id)
+        .eq('organization_id', currentOrganizationId)
         .single()
 
       if (error && error.code !== 'PGRST116') throw error
@@ -53,8 +52,10 @@ export default function Profile() {
     setLoading(true)
 
     try {
-      const { error } = await updateProfile({ name, phone, level, preferred_side: preferredSide, birthday, gender })
-      if (error) throw error
+      const { error: profileError } = await updateProfile({ name, preferred_side: preferredSide, birthday, gender })
+      if (profileError) throw profileError
+      const { error: membershipError } = await updateMembership({ level })
+      if (membershipError) throw membershipError
       setEditing(false)
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
@@ -143,7 +144,7 @@ export default function Profile() {
           </div>
           <h2 className="text-2xl text-white">{profile?.name}</h2>
           <div className="mt-2.5">
-            <LevelBadge level={profile?.level} me size="md" />
+            <LevelBadge level={currentMembership?.level} me size="md" />
           </div>
         </div>
       </div>
@@ -220,17 +221,6 @@ export default function Profile() {
             </div>
 
             <div>
-              <label className={inputLabel}>Telemóvel</label>
-              <input
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className="input-field"
-                placeholder="+351 XXX XXX XXX"
-              />
-            </div>
-
-            <div>
               <label className={inputLabel}>Nível de jogo</label>
               <select
                 value={level}
@@ -272,8 +262,7 @@ export default function Profile() {
                 onClick={() => {
                   setEditing(false)
                   setName(profile.name)
-                  setPhone(profile.phone || '')
-                  setLevel(profile.level)
+                  setLevel(currentMembership?.level || 'iniciante')
                   setBirthday(profile.birthday || '')
                   setGender(profile.gender || '')
                 }}
@@ -310,13 +299,8 @@ export default function Profile() {
             </div>
 
             <div>
-              <p className={fieldLabel}>Telemóvel</p>
-              <p className={fieldValue}>{profile?.phone || 'Não definido'}</p>
-            </div>
-
-            <div>
               <p className={fieldLabel}>Nível de jogo</p>
-              <p className={fieldValue}>{profile?.level}</p>
+              <p className={fieldValue}>{currentMembership?.level}</p>
             </div>
 
             <div>

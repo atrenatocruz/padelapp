@@ -1,89 +1,49 @@
 import { supabase } from './supabase.js'
-
-const CACHE_TTL_MS = 5 * 60 * 1000
-
-let cache = { at: 0, byLast9: new Map() }
-
-function normalize(raw) {
-  if (!raw) return ''
-  let digits = String(raw).replace(/\D/g, '')
-  if (digits.startsWith('00')) digits = digits.slice(2)
-  return digits
-}
-
-function last9(digits) {
-  return digits.slice(-9)
-}
-
-async function refreshCache() {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('id, name, phone')
-    .eq('is_guest', false)
-    .not('phone', 'is', null)
-
-  if (error) {
-    throw new Error(`Failed to load profiles for phone matching: ${error.message}`)
-  }
-
-  const byLast9 = new Map()
-  for (const profile of data) {
-    const key = last9(normalize(profile.phone))
-    if (!key || key.length < 9) continue
-    if (byLast9.has(key)) {
-      // Ambiguous — two profiles share the same national number. Mark as
-      // unresolvable rather than guessing which one a sender means.
-      byLast9.set(key, 'AMBIGUOUS')
-    } else {
-      byLast9.set(key, profile)
-    }
-  }
-
-  cache = { at: Date.now(), byLast9 }
-}
-
-async function ensureFreshCache() {
-  if (Date.now() - cache.at > CACHE_TTL_MS) {
-    await refreshCache()
-  }
-}
+import { config } from './config.js'
 
 /**
  * Resolves a WhatsApp phone-number JID (e.g. "351916376443@s.whatsapp.net")
- * to a profiles row, matching on the last 9 digits of the phone number so
- * country-code/formatting differences don't block a match. Returns null if
- * unmatched or ambiguous (never guesses).
+ * to a profile that's actually a member of THIS bot's organization.
+ *
+ * Hashing is centralized in the `hash-phone` Edge Function (not
+ * reimplemented here) so every bot deployment and the web app compute the
+ * exact same hash for the same person — see
+ * supabase/functions/hash-phone/index.ts. The bot authenticates to it with
+ * its existing service-role key (via the shared `supabase` client), no
+ * separate secret needed here.
+ *
+ * No caching: matching now requires a network round-trip regardless, and
+ * this bot's message volume is far too low to need it.
  */
 export async function resolveProfileByPhoneJid(phoneJid) {
-  if (!phoneJid) {
-    console.warn(
-      'Phone match failed: WhatsApp gave no phone-number JID for this sender (likely a @lid privacy identity with no phone mapping).'
-    )
-    return null
-  }
-  await ensureFreshCache()
+  if (!phoneJid) return null
 
-  const digits = normalize(phoneJid.split('@')[0])
-  const key = last9(digits)
-  if (!key || key.length < 9) {
-    console.warn(`Phone match failed: could not extract 9 digits from "${phoneJid}".`)
+  const digits = phoneJid.split('@')[0]
+  const { data: hashData, error: hashError } = await supabase.functions.invoke('hash-phone', {
+    body: { phone: digits },
+  })
+  if (hashError) {
+    console.error('Failed to hash phone number:', hashError)
     return null
   }
+  const hash = hashData?.hash
+  if (!hash) return null
 
-  const match = cache.byLast9.get(key)
-  if (!match) {
-    console.warn(
-      `Phone match failed: no profile with last-9-digits "${key}" (from ${phoneJid}). Known keys: ${[...cache.byLast9.keys()].join(', ') || '(none cached)'}`
-    )
-    return null
-  }
-  if (match === 'AMBIGUOUS') {
-    console.warn(`Phone match failed: last-9-digits "${key}" matches more than one profile.`)
-    return null
-  }
-  return match
-}
+  // Matching on phone_hash alone isn't enough — it identifies the person,
+  // but they also need to actually belong to THIS org (a real member of a
+  // different club shouldn't resolve here).
+  const { data, error } = await supabase
+    .from('memberships')
+    .select('user_id, profile:profiles!inner(id, name, phone_hash)')
+    .eq('organization_id', config.organizationId)
+    .eq('profile.phone_hash', hash)
+    .maybeSingle()
 
-export function invalidatePhoneCache() {
-  cache = { at: 0, byLast9: new Map() }
+  if (error) {
+    console.error('Failed to look up membership by phone hash:', error)
+    return null
+  }
+  if (!data) return null
+
+  return { id: data.user_id, name: data.profile.name }
 }

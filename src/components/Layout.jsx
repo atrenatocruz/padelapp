@@ -3,12 +3,13 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Home, Trophy, User, Settings, LogOut, HelpCircle, Phone } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { LevelBadge, PrimaryButton } from './ui'
+import { hashPhone } from '../lib/hashPhone'
 
 /* Blocking modal — no close button, no click-outside-to-dismiss. Shown
-   whenever a real (non-guest) member's profile has no phone number, since
-   the WhatsApp bot needs it to recognize them in the group. Covers Google
-   sign-ins (Google never provides a phone) and any older account created
-   before phone became a required signup field. */
+   whenever a real (non-guest) member has no phone hash yet, since the
+   WhatsApp bot needs it to recognize them in the group. Covers Google
+   sign-ins (Google never provides a phone) and any account created
+   before the hashing service existed. */
 function PhoneRequiredModal({ onSave }) {
   const [phone, setPhone] = useState('')
   const [error, setError] = useState('')
@@ -22,12 +23,15 @@ function PhoneRequiredModal({ onSave }) {
     }
     setSaving(true)
     setError('')
-    const { error: saveError } = await onSave(phone)
-    if (saveError) {
+    try {
+      const hash = await hashPhone(phone)
+      const { error: saveError } = await onSave(hash)
+      if (saveError) throw saveError
+      // on success the parent's `profile.phone_hash` updates and this modal unmounts
+    } catch {
       setError('Não foi possível guardar. Tenta novamente.')
       setSaving(false)
     }
-    // on success the parent's `profile.phone` updates and this modal unmounts
   }
 
   return (
@@ -78,9 +82,9 @@ export function Wordmark({ className = '' }) {
 export default function Layout({ children }) {
   const location = useLocation()
   const navigate = useNavigate()
-  const { signOut, profile, updateProfile } = useAuth()
+  const { signOut, profile, updateProfile, currentMembership, isAdmin, isGuest } = useAuth()
 
-  const needsPhone = profile && !profile.is_guest && !profile.phone
+  const needsPhone = profile && !isGuest && !profile.phone_hash
 
   const handleSignOut = async () => {
     await signOut()
@@ -88,7 +92,7 @@ export default function Layout({ children }) {
   }
 
   // Guests only see Jogos + Perfil
-  const navItems = profile?.is_guest
+  const navItems = isGuest
     ? [
         { path: '/', icon: Home, label: 'Jogos' },
         { path: '/perfil', icon: User, label: 'Perfil' },
@@ -99,7 +103,7 @@ export default function Layout({ children }) {
         { path: '/perfil', icon: User, label: 'Perfil' },
       ]
 
-  if (profile?.is_admin) {
+  if (isAdmin) {
     navItems.push({ path: '/admin', icon: Settings, label: 'Admin' })
   }
 
@@ -113,9 +117,9 @@ export default function Layout({ children }) {
           </Link>
 
           <div className="flex items-center gap-1">
-            {profile?.level && !profile?.is_guest && (
+            {currentMembership?.level && !isGuest && (
               <Link to="/perfil" title="O teu nível" className="mr-2">
-                <LevelBadge level={profile.level} me />
+                <LevelBadge level={currentMembership.level} me />
               </Link>
             )}
             <Link
@@ -181,7 +185,7 @@ export default function Layout({ children }) {
       </nav>
 
       {needsPhone && (
-        <PhoneRequiredModal onSave={(phone) => updateProfile({ phone })} />
+        <PhoneRequiredModal onSave={(phone_hash) => updateProfile({ phone_hash })} />
       )}
     </div>
   )

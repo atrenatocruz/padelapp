@@ -56,6 +56,7 @@ export async function getOpenMixes() {
   const { data, error } = await supabase
     .from('games')
     .select('*')
+    .eq('organization_id', config.organizationId)
     .in('status', ['open', 'closed'])
     .gt('date', new Date().toISOString())
     .order('date', { ascending: true })

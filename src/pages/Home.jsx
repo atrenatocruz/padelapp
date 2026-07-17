@@ -7,9 +7,11 @@ import { MixCard, EmptyState } from '../components/ui'
 export default function Home() {
   const [games, setGames] = useState([])
   const [loading, setLoading] = useState(true)
-  const { user, profile } = useAuth()
+  const { user, profile, currentOrganizationId } = useAuth()
 
   useEffect(() => {
+    if (!currentOrganizationId) return
+
     loadGames()
 
     // Subscribe to game updates
@@ -26,7 +28,7 @@ export default function Home() {
     return () => {
       subscription.unsubscribe()
     }
-  }, [])
+  }, [currentOrganizationId])
 
   const loadGames = async () => {
     try {
@@ -39,10 +41,11 @@ export default function Home() {
             user_id,
             partner_id,
             status,
-            user:profiles!participants_user_id_fkey (name, level, is_guest),
-            partner:profiles!participants_partner_id_fkey (name, level, is_guest)
+            user:profiles!participants_user_id_fkey (name),
+            partner:profiles!participants_partner_id_fkey (name)
           )
         `)
+        .eq('organization_id', currentOrganizationId)
         .order('date', { ascending: true })
 
       if (error) {
@@ -50,8 +53,33 @@ export default function Home() {
         throw error
       }
 
+      // level/is_guest moved to `memberships` (per-org) — fetch this org's
+      // memberships once and merge onto each participant's user/partner so
+      // MixCard's existing shape (p.user.level, p.user.is_guest) still works.
+      const { data: memberRows, error: memberError } = await supabase
+        .from('memberships')
+        .select('user_id, level, is_guest')
+        .eq('organization_id', currentOrganizationId)
+      if (memberError) throw memberError
+      const membershipByUser = new Map((memberRows || []).map((m) => [m.user_id, m]))
+
+      const attachMembership = (person, userId) => {
+        if (!person) return person
+        const m = membershipByUser.get(userId)
+        return { ...person, level: m?.level, is_guest: m?.is_guest ?? false }
+      }
+
       // Show all games that are not cancelled
-      const filteredGames = data ? data.filter(game => game.status !== 'cancelled') : []
+      const filteredGames = (data || [])
+        .filter((game) => game.status !== 'cancelled')
+        .map((game) => ({
+          ...game,
+          participants: (game.participants || []).map((p) => ({
+            ...p,
+            user: attachMembership(p.user, p.user_id),
+            partner: attachMembership(p.partner, p.partner_id),
+          })),
+        }))
 
       setGames(filteredGames)
     } catch (error) {

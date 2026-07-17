@@ -33,7 +33,7 @@ const ProtectedRoute = ({ children }) => {
 
 // Members-only route: guests are redirected to Jogos
 const MemberRoute = ({ children }) => {
-  const { user, profile, loading } = useAuth()
+  const { user, isGuest, loading } = useAuth()
 
   if (loading) {
     return (
@@ -50,7 +50,7 @@ const MemberRoute = ({ children }) => {
     return <Navigate to="/login" />
   }
 
-  if (profile?.is_guest) {
+  if (isGuest) {
     return <Navigate to="/" />
   }
 
@@ -58,7 +58,7 @@ const MemberRoute = ({ children }) => {
 }
 
 const AdminRoute = ({ children }) => {
-  const { profile, loading } = useAuth()
+  const { isAdmin, loading } = useAuth()
 
   if (loading) {
     return (
@@ -71,7 +71,7 @@ const AdminRoute = ({ children }) => {
     )
   }
 
-  if (!profile?.is_admin) {
+  if (!isAdmin) {
     return <Navigate to="/" />
   }
 
