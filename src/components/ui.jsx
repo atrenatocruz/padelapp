@@ -272,13 +272,13 @@ export function MixCard({ game, joined = false }) {
           <span className="inline-flex items-center gap-1.5 bg-volt-400 text-court-900 text-xs font-extrabold px-3 py-1.5 rounded-full">
             <Play size={14} /> A decorrer
           </span>
+        ) : isDone ? (
+          <span className="inline-flex items-center gap-1.5 bg-court-100 text-court-700 text-xs font-extrabold px-3 py-1.5 rounded-full">
+            <CheckCircle2 size={14} /> Mix terminado
+          </span>
         ) : joined ? (
           <span className="inline-flex items-center gap-1.5 bg-volt-400 text-court-900 text-xs font-extrabold px-3 py-1.5 rounded-full">
             <CheckCircle2 size={14} /> Inscrito
-          </span>
-        ) : isDone ? (
-          <span className="inline-flex items-center gap-1.5 bg-court-100 text-court-700 text-xs font-extrabold px-3 py-1.5 rounded-full">
-            <CheckCircle2 size={14} /> Terminado
           </span>
         ) : null}
       </div>
