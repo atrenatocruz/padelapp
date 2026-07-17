@@ -509,18 +509,20 @@ BEGIN
             + CASE WHEN won_mix THEN COALESCE((rules->>'point_per_mix_win')::int, 0) ELSE 0 END
            ) AS pts
     FROM scored
+  ),
+  ins_player_stats AS (
+    INSERT INTO player_stats (user_id, organization_id, game_wins, game_losses, mix_wins, mixes_played, total_points)
+    SELECT pid, v_org_id, wins, losses, CASE WHEN won_mix THEN 1 ELSE 0 END, 1, pts
+    FROM pcalc
+    ON CONFLICT (user_id, organization_id) DO UPDATE
+    SET game_wins    = player_stats.game_wins    + EXCLUDED.game_wins,
+        game_losses  = player_stats.game_losses  + EXCLUDED.game_losses,
+        mix_wins     = player_stats.mix_wins     + EXCLUDED.mix_wins,
+        mixes_played = player_stats.mixes_played + EXCLUDED.mixes_played,
+        total_points = player_stats.total_points + EXCLUDED.total_points,
+        updated_at   = NOW()
+    RETURNING 1
   )
-  INSERT INTO player_stats (user_id, organization_id, game_wins, game_losses, mix_wins, mixes_played, total_points)
-  SELECT pid, v_org_id, wins, losses, CASE WHEN won_mix THEN 1 ELSE 0 END, 1, pts
-  FROM pcalc
-  ON CONFLICT (user_id, organization_id) DO UPDATE
-  SET game_wins    = player_stats.game_wins    + EXCLUDED.game_wins,
-      game_losses  = player_stats.game_losses  + EXCLUDED.game_losses,
-      mix_wins     = player_stats.mix_wins     + EXCLUDED.mix_wins,
-      mixes_played = player_stats.mixes_played + EXCLUDED.mixes_played,
-      total_points = player_stats.total_points + EXCLUDED.total_points,
-      updated_at   = NOW();
-
   INSERT INTO mix_player_stats (game_id, user_id, organization_id, matches_played, matches_won, points_earned, mix_won)
   SELECT p_game_id, pid, v_org_id, played, wins, pts, won_mix
   FROM pcalc
