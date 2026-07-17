@@ -16,5 +16,5 @@ export const config = {
   authDir: process.env.AUTH_DIR || './baileys-auth',
   port: Number(process.env.PORT) || 8080,
   pairingPhone: process.env.PAIRING_PHONE || null,
-  appUrl: process.env.APP_URL || 'https://padelapp-pi.vercel.app',
+  appUrl: process.env.APP_URL || 'https://alinho.pt',
 }
