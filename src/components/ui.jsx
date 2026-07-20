@@ -386,7 +386,7 @@ export function PrimaryButton({ variant = 'lime', className = '', children, ...p
 }
 
 /* ─── LevelBadge ─────────────────────────────────────────────────────────
-   Impossible to misread: bold label on ink. `me` gets the volt treatment.
+   Impossible to misread: bold label on ink. `me` gets the lime treatment.
    Pass `range` (string) instead of `level` for a level range. */
 export function LevelBadge({ level, range, me = false, size = 'sm' }) {
   const text = range ?? levelMeta(level).label
@@ -541,7 +541,7 @@ export function MixCard({ game, joined = false }) {
       className={`card press block hover:shadow-lift relative overflow-hidden
                   ${isDone ? 'opacity-60' : ''}`}
     >
-      {/* joined = volt accent bar, instantly distinct */}
+      {/* joined = lime accent bar, instantly distinct */}
       {joined && <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-lime-400" />}
 
       <div className="flex items-start justify-between gap-3 mb-3">
