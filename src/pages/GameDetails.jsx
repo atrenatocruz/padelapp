@@ -4,7 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { Calendar, MapPin, ArrowLeft, UserPlus, User, Check, Lock, Trophy, Play, ChevronRight, Swords, X, Repeat, Share2 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
-import { PrimaryButton, LevelBadge, GuestBadge, PlayerAvatarRow, EmptyState, ShareModal, RoundTimer, Avatar } from '../components/ui'
+import { PrimaryButton, LevelBadge, GuestBadge, PlayerAvatarRow, EmptyState, ShareModal, RoundTimer, Avatar, Select } from '../components/ui'
 import {
   countPeople, totalRounds, formDuplas, seedCourts, nextSobeDesce,
   roundRobinRound, standings, eliminationPhases, firstElimMatches, nextElimMatches,
@@ -1114,20 +1114,14 @@ export default function GameDetails() {
                 <label className="block text-sm font-extrabold text-court-900 mb-2">
                   Escolhe o teu parceiro
                 </label>
-                <select
+                <Select
                   value={selectedPartner}
-                  onChange={(e) => setSelectedPartner(e.target.value)}
-                  className="input-field"
-                >
-                  <option value="">Seleciona um jogador</option>
-                  {allUsers
+                  onChange={setSelectedPartner}
+                  placeholder="Seleciona um jogador"
+                  options={allUsers
                     .filter(u => !people.some(p => p.id === u.id))
-                    .map(u => (
-                      <option key={u.id} value={u.id}>
-                        {u.name}
-                      </option>
-                    ))}
-                </select>
+                    .map(u => ({ value: u.id, label: u.name }))}
+                />
               </div>
               <div className="flex gap-3">
                 <PrimaryButton

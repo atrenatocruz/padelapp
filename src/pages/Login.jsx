@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { PrimaryButton, DateField } from '../components/ui'
+import { PrimaryButton, DateField, Select } from '../components/ui'
 import { Wordmark } from '../components/Layout'
 import { hashPhone } from '../lib/hashPhone'
 
@@ -81,6 +81,21 @@ export default function Login() {
     e.preventDefault()
     setLoading(true)
     setError('')
+
+    // Birthday and gender used to be enforced by the native inputs'
+    // `required` attribute — DateField/Select are custom components now,
+    // so the checks have to happen here instead.
+    if (!signupBirthday) {
+      setError('Introduz a tua data de nascimento')
+      setLoading(false)
+      return
+    }
+
+    if (!signupGender) {
+      setError('Seleciona o teu género')
+      setLoading(false)
+      return
+    }
 
     // Validate password match
     if (signupPassword !== signupConfirmPassword) {
@@ -314,16 +329,15 @@ export default function Login() {
 
               <div>
                 <label className={inputLabel}>Género</label>
-                <select
+                <Select
                   value={signupGender}
-                  onChange={(e) => setSignupGender(e.target.value)}
-                  className="input-field"
-                  required
-                >
-                  <option value="">Seleciona…</option>
-                  <option value="masculino">Masculino</option>
-                  <option value="feminino">Feminino</option>
-                </select>
+                  onChange={setSignupGender}
+                  placeholder="Seleciona…"
+                  options={[
+                    { value: 'masculino', label: 'Masculino' },
+                    { value: 'feminino', label: 'Feminino' },
+                  ]}
+                />
               </div>
 
               <div>

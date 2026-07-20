@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { Trophy, Award, ChevronDown, Calendar } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
-import { LevelBadge, EmptyState, MixCard, Avatar } from '../components/ui'
+import { LevelBadge, EmptyState, MixCard, Avatar, Select } from '../components/ui'
 import { winRatePct, buildMonthlyLeaderboard } from '../lib/statsLogic'
 
 const TABS = [
@@ -315,15 +315,12 @@ export default function Rankings() {
             />
           ) : (
             <>
-              <select
+              <Select
                 value={selectedMonth || ''}
-                onChange={(e) => setSelectedMonth(e.target.value)}
-                className="input-field capitalize"
-              >
-                {monthly.months.map(m => (
-                  <option key={m.key} value={m.key} className="capitalize">{m.label}</option>
-                ))}
-              </select>
+                onChange={setSelectedMonth}
+                className="capitalize"
+                options={monthly.months.map(m => ({ value: m.key, label: m.label }))}
+              />
 
               <div className="space-y-3">
                 {monthPlayers.map((p, index) => (

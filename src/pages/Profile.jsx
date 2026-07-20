@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { hashPhone } from '../lib/hashPhone'
 import { uploadAvatar, removeAvatar } from '../lib/avatarStorage'
-import { PrimaryButton, LevelBadge, GuestBadge, DateField, Avatar } from '../components/ui'
+import { PrimaryButton, LevelBadge, GuestBadge, DateField, Avatar, Select } from '../components/ui'
 
 export default function Profile() {
   const { profile, updateProfile, updateMembership, currentMembership, currentOrganizationId, isGuest, signOut } = useAuth()
@@ -299,33 +299,33 @@ export default function Profile() {
 
             <div>
               <label className={inputLabel}>Género</label>
-              <select
+              <Select
                 value={gender}
-                onChange={(e) => setGender(e.target.value)}
-                className="input-field"
-              >
-                <option value="">Não especificado</option>
-                <option value="masculino">Masculino</option>
-                <option value="feminino">Feminino</option>
-              </select>
+                onChange={setGender}
+                placeholder="Não especificado"
+                options={[
+                  { value: 'masculino', label: 'Masculino' },
+                  { value: 'feminino', label: 'Feminino' },
+                ]}
+              />
             </div>
 
             <div>
               <label className={inputLabel}>Nível de jogo</label>
-              <select
+              <Select
                 value={level}
-                onChange={(e) => setLevel(e.target.value)}
-                className="input-field"
-              >
-                <option value="iniciante">Iniciante</option>
-                <option value="intermédio">Intermédio</option>
-                <option value="avançado">Avançado</option>
-                <option value="N2">N2</option>
-                <option value="N3">N3</option>
-                <option value="N4">N4</option>
-                <option value="N5">N5</option>
-                <option value="N6">N6</option>
-              </select>
+                onChange={setLevel}
+                options={[
+                  { value: 'iniciante', label: 'Iniciante' },
+                  { value: 'intermédio', label: 'Intermédio' },
+                  { value: 'avançado', label: 'Avançado' },
+                  { value: 'N2', label: 'N2' },
+                  { value: 'N3', label: 'N3' },
+                  { value: 'N4', label: 'N4' },
+                  { value: 'N5', label: 'N5' },
+                  { value: 'N6', label: 'N6' },
+                ]}
+              />
             </div>
 
             <div>
@@ -347,15 +347,15 @@ export default function Profile() {
 
             <div>
               <label className={inputLabel}>Lado preferido</label>
-              <select
+              <Select
                 value={preferredSide}
-                onChange={(e) => setPreferredSide(e.target.value)}
-                className="input-field"
-              >
-                <option value="left">Esquerda</option>
-                <option value="right">Direita</option>
-                <option value="both">Ambos</option>
-              </select>
+                onChange={setPreferredSide}
+                options={[
+                  { value: 'left', label: 'Esquerda' },
+                  { value: 'right', label: 'Direita' },
+                  { value: 'both', label: 'Ambos' },
+                ]}
+              />
               <p className="text-xs text-muted mt-1.5">Usado na formação de duplas dos mixes</p>
             </div>
 
