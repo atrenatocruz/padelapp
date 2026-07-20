@@ -167,7 +167,14 @@ export default function Admin() {
 
   const handleCreateGame = async (e) => {
     e.preventDefault()
-    
+
+    // Date used to be enforced by DateTimeField's underlying native
+    // input's `required` attribute — it's a fully custom component now.
+    if (!gameForm.date) {
+      alert('Escolhe uma data e hora para o jogo')
+      return
+    }
+
     try {
       const { data: { user } } = await supabase.auth.getUser()
       // num_courts is kept as a raw string in gameForm while the admin is
@@ -214,7 +221,12 @@ export default function Admin() {
 
   const handleUpdateGame = async (e) => {
     e.preventDefault()
-    
+
+    if (!gameForm.date) {
+      alert('Escolhe uma data e hora para o jogo')
+      return
+    }
+
     try {
       // See handleCreateGame — num_courts is a raw string while typing,
       // clamped to a valid 1-6 count here at submit time.

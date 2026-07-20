@@ -160,24 +160,115 @@ export function DateField({ value, onChange, max, min, placeholder = 'Seleciona 
   )
 }
 
-export function DateTimeField({ value, onChange, required, placeholder = 'Seleciona data e hora' }) {
+export function DateTimeField({ value, onChange, placeholder = 'Seleciona data e hora' }) {
+  const [open, setOpen] = useState(false)
+  // Pending date (from the calendar) and time (from the native time input)
+  // are held separately while the sheet is open, and only combined into
+  // one value when "Confirmar" is tapped — picking a day shouldn't close
+  // this sheet the way it does for DateField, since there's still a time
+  // to set.
+  const initialDate = value ? new Date(value) : null
+  const [pendingDate, setPendingDate] = useState(initialDate)
+  const [pendingTime, setPendingTime] = useState(
+    initialDate
+      ? `${String(initialDate.getHours()).padStart(2, '0')}:${String(initialDate.getMinutes()).padStart(2, '0')}`
+      : '10:00'
+  )
+  const [viewDate, setViewDate] = useState(initialDate || new Date())
+
   const display = value
     ? new Date(value).toLocaleString('pt-PT', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })
     : placeholder
+
+  const openPicker = () => {
+    const current = value ? new Date(value) : null
+    setPendingDate(current)
+    setPendingTime(
+      current
+        ? `${String(current.getHours()).padStart(2, '0')}:${String(current.getMinutes()).padStart(2, '0')}`
+        : '10:00'
+    )
+    setViewDate(current || new Date())
+    setOpen(true)
+  }
+
+  const navigate = (delta) => {
+    setViewDate((d) => new Date(d.getFullYear(), d.getMonth() + delta, 1))
+  }
+
+  const selectDay = (day) => {
+    setPendingDate(new Date(viewDate.getFullYear(), viewDate.getMonth(), day))
+  }
+
+  const confirm = () => {
+    if (!pendingDate) return
+    const [hours, minutes] = pendingTime.split(':').map(Number)
+    const combined = new Date(pendingDate.getFullYear(), pendingDate.getMonth(), pendingDate.getDate(), hours, minutes)
+    const iso = `${combined.getFullYear()}-${String(combined.getMonth() + 1).padStart(2, '0')}-${String(combined.getDate()).padStart(2, '0')}T${String(combined.getHours()).padStart(2, '0')}:${String(combined.getMinutes()).padStart(2, '0')}`
+    onChange(iso)
+    setOpen(false)
+  }
+
   return (
     <div className="relative">
-      <div className={`input-field flex items-center justify-between ${value ? 'text-court-900' : 'text-muted'}`}>
+      <button
+        type="button"
+        onClick={openPicker}
+        className={`input-field flex items-center justify-between text-left ${value ? 'text-court-900' : 'text-muted'}`}
+      >
         <span className="truncate">{display}</span>
         <Calendar size={18} className="text-court-600 shrink-0 ml-2" />
-      </div>
-      <input
-        type="datetime-local"
-        value={value || ''}
-        required={required}
-        onChange={(e) => onChange(e.target.value)}
-        aria-label="Data e hora"
-        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-      />
+      </button>
+
+      {open && createPortal(
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-court-900/50 animate-fade-in"
+          onClick={() => setOpen(false)}
+        >
+          <div
+            className="bg-surface rounded-t-card sm:rounded-card shadow-lift w-full sm:max-w-md p-5 animate-pop"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg text-court-900">{placeholder}</h3>
+              <button
+                onClick={() => setOpen(false)}
+                aria-label="Fechar"
+                className="w-9 h-9 flex items-center justify-center rounded-full text-muted hover:bg-court-50 hover:text-court-900 transition-colors duration-fast"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <MonthCalendar
+              selected={pendingDate}
+              viewDate={viewDate}
+              onNavigate={navigate}
+              onSelectDay={selectDay}
+              min={null}
+              max={null}
+            />
+            <div className="mt-4">
+              <label className="block text-sm font-extrabold text-court-900 mb-2">Hora</label>
+              <input
+                type="time"
+                value={pendingTime}
+                onChange={(e) => setPendingTime(e.target.value)}
+                className="input-field"
+                aria-label="Hora"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={confirm}
+              disabled={!pendingDate}
+              className="btn-primary w-full mt-4 disabled:opacity-40 disabled:pointer-events-none"
+            >
+              Confirmar
+            </button>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   )
 }
