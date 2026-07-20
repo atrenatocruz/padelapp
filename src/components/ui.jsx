@@ -176,7 +176,7 @@ export function DateField({ value, onChange, max, min, placeholder = 'Seleciona 
           onClick={() => setOpen(false)}
         >
           <div
-            className="bg-surface rounded-t-card sm:rounded-card shadow-lift w-full sm:max-w-md p-5 animate-pop"
+            className="bg-surface rounded-t-card sm:rounded-card shadow-lift w-full sm:max-w-md max-h-[90vh] overflow-y-auto p-5 animate-pop"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-4">
@@ -276,7 +276,7 @@ export function DateTimeField({ value, onChange, placeholder = 'Seleciona data e
           onClick={() => setOpen(false)}
         >
           <div
-            className="bg-surface rounded-t-card sm:rounded-card shadow-lift w-full sm:max-w-md p-5 animate-pop"
+            className="bg-surface rounded-t-card sm:rounded-card shadow-lift w-full sm:max-w-md max-h-[90vh] overflow-y-auto p-5 animate-pop"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-4">
