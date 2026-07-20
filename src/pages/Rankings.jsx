@@ -160,16 +160,16 @@ export default function Rankings() {
 
   // Position chip: 1st gets the volt, 2nd/3rd get ink tones, rest neutral
   const positionStyle = (i) => {
-    if (i === 0) return 'bg-volt-400 text-court-900'
-    if (i === 1) return 'bg-court-900 text-white'
-    if (i === 2) return 'bg-court-600 text-white'
-    return 'bg-court-100 text-court-700'
+    if (i === 0) return 'bg-lime-400 text-ink-900'
+    if (i === 1) return 'bg-ink-900 text-white'
+    if (i === 2) return 'bg-ink-700 text-white'
+    return 'bg-ink-50 text-ink-700'
   }
 
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16">
-        <div className="animate-spin rounded-full h-10 w-10 border-[3px] border-court-100 border-t-court-600"></div>
+        <div className="animate-spin rounded-full h-10 w-10 border-[3px] border-ink-50 border-t-ink-700"></div>
       </div>
     )
   }
@@ -180,17 +180,17 @@ export default function Rankings() {
     <div className="space-y-5">
       <div>
         <p className="text-muted text-sm mb-0.5">{currentOrganization?.name}</p>
-        <h2 className="text-3xl text-court-900">Classificação</h2>
+        <h2 className="text-3xl text-ink-900">Classificação</h2>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 p-1 bg-court-100 rounded-ctrl">
+      <div className="flex gap-1 p-1 bg-ink-50 rounded-ctrl">
         {TABS.map(t => (
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
             className={`flex-1 py-2.5 rounded-ctrl text-sm font-extrabold transition-colors duration-fast ${
-              tab === t.key ? 'bg-surface text-court-900 shadow-card' : 'text-muted hover:text-court-900'
+              tab === t.key ? 'bg-surface text-ink-900 shadow-card' : 'text-muted hover:text-ink-900'
             }`}
           >
             {t.label}
@@ -213,7 +213,7 @@ export default function Rankings() {
                 <Link
                   key={player.id}
                   to={`/jogador/${player.user_id}`}
-                  className={`card press block hover:shadow-lift ${index === 0 ? 'ring-2 ring-volt-400' : ''}`}
+                  className={`card press block hover:shadow-lift ${index === 0 ? 'ring-2 ring-lime-400' : ''}`}
                 >
                   <div className="flex items-center gap-3.5">
                     <div
@@ -223,7 +223,7 @@ export default function Rankings() {
                     </div>
 
                     <div className="flex-1 min-w-0">
-                      <h3 className="text-base text-court-900 truncate">
+                      <h3 className="text-base text-ink-900 truncate">
                         {player.user?.name}
                       </h3>
                       <div className="mt-0.5 flex items-center gap-2">
@@ -236,8 +236,8 @@ export default function Rankings() {
 
                     <div className="text-right shrink-0">
                       <div className="flex items-center gap-1.5 justify-end">
-                        <Trophy size={15} className="text-volt-500" />
-                        <span className="text-2xl font-extrabold text-court-900 tabular-nums">
+                        <Trophy size={16} className="text-lime-600" />
+                        <span className="text-2xl font-extrabold text-ink-900 tabular-nums">
                           {player.total_points || 0}
                         </span>
                       </div>
@@ -255,7 +255,7 @@ export default function Rankings() {
                       <p className="text-[11px] text-muted">jogos perdidos</p>
                     </div>
                     <div>
-                      <p className="text-lg font-extrabold text-court-600 tabular-nums">{player.winRate}%</p>
+                      <p className="text-lg font-extrabold text-ink-700 tabular-nums">{player.winRate}%</p>
                       <p className="text-[11px] text-muted">taxa vitória</p>
                     </div>
                   </div>
@@ -269,9 +269,9 @@ export default function Rankings() {
             <button
               onClick={() => setShowPlayers(v => !v)}
               aria-expanded={showPlayers}
-              className="w-full flex items-center justify-between px-5 py-4 min-h-[56px] transition-colors duration-fast hover:bg-court-50"
+              className="w-full flex items-center justify-between px-5 py-4 min-h-[56px] transition-colors duration-fast hover:bg-ink-50"
             >
-              <span className="text-lg font-extrabold text-court-900">
+              <span className="text-lg font-extrabold text-ink-900">
                 Lista de jogadores
                 <span className="text-muted font-normal text-sm ml-2">({players.length})</span>
               </span>
@@ -290,10 +290,10 @@ export default function Rankings() {
                     <Link
                       key={p.id}
                       to={`/jogador/${p.id}`}
-                      className="flex items-center gap-3 px-5 py-3 transition-colors duration-fast hover:bg-court-50"
+                      className="flex items-center gap-3 px-5 py-3 transition-colors duration-fast hover:bg-ink-50"
                     >
                       <Avatar name={p.name} url={p.avatar_url} size="w-9 h-9 text-sm" />
-                      <p className="flex-1 min-w-0 font-extrabold text-court-900 truncate">{p.name}</p>
+                      <p className="flex-1 min-w-0 font-extrabold text-ink-900 truncate">{p.name}</p>
                       <LevelBadge level={p.level} />
                     </Link>
                   ))
@@ -333,20 +333,20 @@ export default function Rankings() {
                   <Link
                     key={p.user_id}
                     to={`/jogador/${p.user_id}`}
-                    className={`card press block hover:shadow-lift ${index === 0 ? 'ring-2 ring-volt-400' : ''}`}
+                    className={`card press block hover:shadow-lift ${index === 0 ? 'ring-2 ring-lime-400' : ''}`}
                   >
                     <div className="flex items-center gap-3.5">
                       <div className={`w-11 h-11 rounded-ctrl flex items-center justify-center font-extrabold text-lg shrink-0 tabular-nums ${positionStyle(index)}`}>
                         {index + 1}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h3 className="text-base text-court-900 truncate">{p.user?.name || '—'}</h3>
+                        <h3 className="text-base text-ink-900 truncate">{p.user?.name || '—'}</h3>
                         <p className="text-[11px] text-muted mt-0.5">
                           {p.participations} {p.participations === 1 ? 'mix' : 'mixes'} • 🏆 {p.mixesWon} ganho{p.mixesWon === 1 ? '' : 's'}
                         </p>
                       </div>
                       <div className="text-right shrink-0">
-                        <p className="text-2xl font-extrabold text-court-900 tabular-nums">{p.points}</p>
+                        <p className="text-2xl font-extrabold text-ink-900 tabular-nums">{p.points}</p>
                         <p className="text-[11px] text-muted">pontos</p>
                       </div>
                     </div>
@@ -356,11 +356,11 @@ export default function Rankings() {
                         <p className="text-[11px] text-muted">vitórias</p>
                       </div>
                       <div>
-                        <p className="text-lg font-extrabold text-court-600 tabular-nums">{p.played}</p>
+                        <p className="text-lg font-extrabold text-ink-700 tabular-nums">{p.played}</p>
                         <p className="text-[11px] text-muted">jogos</p>
                       </div>
                       <div>
-                        <p className="text-lg font-extrabold text-court-600 tabular-nums">{p.winRate}%</p>
+                        <p className="text-lg font-extrabold text-ink-700 tabular-nums">{p.winRate}%</p>
                         <p className="text-[11px] text-muted">taxa vitória</p>
                       </div>
                     </div>

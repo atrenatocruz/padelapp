@@ -137,7 +137,7 @@ export default function Home() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16">
-        <div className="animate-spin rounded-full h-10 w-10 border-[3px] border-court-100 border-t-court-600"></div>
+        <div className="animate-spin rounded-full h-10 w-10 border-[3px] border-ink-50 border-t-ink-700"></div>
       </div>
     )
   }
@@ -150,7 +150,7 @@ export default function Home() {
         {firstName && (
           <p className="text-muted text-sm mb-0.5">Olá, {firstName} 👋</p>
         )}
-        <h2 className="text-3xl text-court-900">Próximos jogos</h2>
+        <h2 className="text-3xl text-ink-900">Próximos jogos</h2>
       </div>
 
       {!currentOrganizationId ? (
