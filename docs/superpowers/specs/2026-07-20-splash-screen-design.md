@@ -57,8 +57,13 @@ alongside the other `.animate-*` classes, so it's disabled the same way.
 
 ## Gating logic
 
-In `src/App.jsx`, `AppRoutes()` gets a top-level gate before rendering
-`<Routes>`:
+`/login` and `/instrucoes` are unguarded routes today — they render
+immediately regardless of `loading`, since neither is wrapped in
+`ProtectedRoute`/`MemberRoute`/`AdminRoute`. The splash must not change
+that (it would be a scope-expanding regression: those two pages would
+start waiting on auth for no reason). So the gate is threaded through
+the three guards via a shared `showSplash` prop, computed once in
+`AppRoutes()`, rather than hoisted above the whole `<Routes>` tree:
 
 ```jsx
 function AppRoutes() {
@@ -70,28 +75,37 @@ function AppRoutes() {
     return () => clearTimeout(timer)
   }, [])
 
-  if (authLoading || !minDurationElapsed) {
-    return <SplashScreen />
-  }
+  const showSplash = authLoading || !minDurationElapsed
 
   return (
     <Routes>
-      {/* ...unchanged... */}
+      <Route path="/login" element={user ? <Navigate to="/" /> : <Login />} />
+      <Route path="/instrucoes" element={<Instructions />} />
+      <Route path="/" element={<ProtectedRoute showSplash={showSplash}>...</ProtectedRoute>} />
+      {/* ...same showSplash prop passed at every ProtectedRoute/MemberRoute/AdminRoute usage... */}
     </Routes>
   )
 }
 ```
 
-The 700ms minimum is a plain `setTimeout`, inlined here (not a separate
-hook file — it's a single one-off use, a dedicated hook would be
-premature abstraction). It guarantees the pulse animation plays at least
-once even when the session check resolves near-instantly, avoiding a
-one-frame flash.
+Each guard renders `<SplashScreen />` when `showSplash` is true, before
+its normal redirect check:
 
-Because routes never render until both conditions clear, `ProtectedRoute`,
-`MemberRoute`, and `AdminRoute` no longer need their own `if (loading)`
-branches — those are dead code once the gate exists, and are removed
-(each guard keeps only its `user`/`isGuest`/`isAdmin` redirect check).
+```jsx
+const ProtectedRoute = ({ children, showSplash }) => {
+  const { user } = useAuth()
+  if (showSplash) return <SplashScreen />
+  if (!user) return <Navigate to="/login" />
+  return children
+}
+```
+
+(`MemberRoute`/`AdminRoute` follow the same pattern with their own
+existing redirect checks.) The 700ms minimum is a plain `setTimeout`,
+inlined in `AppRoutes` (not a separate hook file — it's a single one-off
+use, a dedicated hook would be premature abstraction) and shared via the
+one `showSplash` value, so all three guards agree on when to stop
+showing the splash — it isn't recomputed per guard.
 
 ## Scope
 
