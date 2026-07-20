@@ -12,40 +12,35 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Manrope', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
+        // Headings — Outfit, weights bold/semibold/medium per level (see src/index.css base layer)
+        display: ['Outfit', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
+        // Body/UI text — Geist Sans, replacing Manrope
+        sans: ['Geist Sans', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
+        // Small uppercase labels (badges, section eyebrows) — Geist Mono, tracked-wide at call sites
+        mono: ['Geist Mono', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
       },
       colors: {
-        // Court blues (primary)
-        court: {
-          50: 'rgb(var(--court-50) / <alpha-value>)',
-          100: 'rgb(var(--court-100) / <alpha-value>)',
-          200: 'rgb(var(--court-200) / <alpha-value>)',
-          500: 'rgb(var(--court-500) / <alpha-value>)',
-          600: 'rgb(var(--court-600) / <alpha-value>)',
-          700: 'rgb(var(--court-700) / <alpha-value>)',
-          900: 'rgb(var(--court-900) / <alpha-value>)',
+        // Ink — near-black + neutral grays (primary family, was: court)
+        ink: {
+          50: 'rgb(var(--ink-50) / <alpha-value>)',
+          200: 'rgb(var(--ink-200) / <alpha-value>)',
+          500: 'rgb(var(--ink-500) / <alpha-value>)',
+          700: 'rgb(var(--ink-700) / <alpha-value>)',
+          900: 'rgb(var(--ink-900) / <alpha-value>)',
         },
-        // Volt green (single sharp accent — the ball)
-        volt: {
-          300: 'rgb(var(--volt-300) / <alpha-value>)',
-          400: 'rgb(var(--volt-400) / <alpha-value>)',
-          500: 'rgb(var(--volt-500) / <alpha-value>)',
+        // Lime (single sharp accent — the ball, was: volt)
+        lime: {
+          100: 'rgb(var(--lime-100) / <alpha-value>)',
+          400: 'rgb(var(--lime-400) / <alpha-value>)',
+          600: 'rgb(var(--lime-600) / <alpha-value>)',
         },
-        sand: 'rgb(var(--sand) / <alpha-value>)',        // off-white app background
-        surface: 'rgb(var(--surface) / <alpha-value>)',  // cards
+        canvas: 'rgb(var(--canvas) / <alpha-value>)',    // pure-white app background (was: sand)
+        surface: 'rgb(var(--surface) / <alpha-value>)',  // light-gray cards (was: white cards)
         line: 'rgb(var(--line) / <alpha-value>)',        // hairline borders
-        ink: 'rgb(var(--court-900) / <alpha-value>)',    // headings / strong text
         muted: 'rgb(var(--muted) / <alpha-value>)',      // secondary text
         ok: 'rgb(var(--ok) / <alpha-value>)',
         danger: 'rgb(var(--danger) / <alpha-value>)',
-
-        // Legacy aliases — untouched pages (Admin, Instructions) keep working
-        // and automatically inherit the new theme.
-        apple: {
-          blue: 'rgb(var(--court-600) / <alpha-value>)',
-          gray: 'rgb(var(--sand) / <alpha-value>)',
-          darkgray: 'rgb(var(--court-900) / <alpha-value>)',
-        },
+        warning: 'rgb(var(--warning) / <alpha-value>)',  // new, not yet consumed by any component
       },
       borderRadius: {
         card: 'var(--radius-card)',   // 16px — cards
