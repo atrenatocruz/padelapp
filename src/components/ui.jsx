@@ -26,7 +26,10 @@ function MonthCalendar({ selected, viewDate, onNavigate, onSelectDay, min, max }
   const month = viewDate.getMonth()
   const firstWeekday = new Date(year, month, 1).getDay()
   const daysInMonth = new Date(year, month + 1, 0).getDate()
-  const monthLabel = viewDate.toLocaleDateString('pt-PT', { month: 'long', year: 'numeric' })
+  // Capitalize only the leading letter in JS ("Fevereiro de 2024") — a CSS
+  // `capitalize` class would capitalize every word, including the "de".
+  const rawMonthLabel = viewDate.toLocaleDateString('pt-PT', { month: 'long', year: 'numeric' })
+  const monthLabel = rawMonthLabel.charAt(0).toUpperCase() + rawMonthLabel.slice(1)
 
   const cells = []
   for (let i = 0; i < firstWeekday; i++) cells.push(null)
@@ -43,7 +46,7 @@ function MonthCalendar({ selected, viewDate, onNavigate, onSelectDay, min, max }
         >
           <ChevronLeft size={20} />
         </button>
-        <span className="font-extrabold text-court-900 capitalize">{monthLabel}</span>
+        <span className="font-extrabold text-court-900">{monthLabel}</span>
         <button
           type="button"
           onClick={() => onNavigate(1)}
