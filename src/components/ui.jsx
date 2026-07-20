@@ -13,6 +13,36 @@ import { MapPin, CheckCircle2, ChevronRight, ChevronDown, ChevronLeft, Lock, Pla
 
 const WEEKDAY_LABELS = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S']
 
+// Portuguese month names for the quick month-jump Select, capitalized the
+// same way as the header label (JS, not CSS — see the note below).
+const MONTH_OPTIONS = Array.from({ length: 12 }, (_, i) => {
+  const label = new Date(2000, i, 1).toLocaleDateString('pt-PT', { month: 'long' })
+  return { value: i, label: label.charAt(0).toUpperCase() + label.slice(1) }
+})
+
+// Bounds the year-jump Select's option list. With both min and max (games
+// have neither, birthdays only have max) the range is exact; with only a
+// max (birthdays) it opens up 120 years back — enough for anyone filling
+// in their own birth year without endless scrolling; with neither
+// (unconstrained dates) it's just a handful of years around today.
+function yearOptionsFor(min, max) {
+  const thisYear = new Date().getFullYear()
+  let startYear, endYear
+  if (min && max) {
+    startYear = min.getFullYear()
+    endYear = max.getFullYear()
+  } else if (max) {
+    endYear = max.getFullYear()
+    startYear = endYear - 120
+  } else {
+    startYear = thisYear - 1
+    endYear = thisYear + 5
+  }
+  const years = []
+  for (let y = endYear; y >= startYear; y--) years.push({ value: y, label: String(y) })
+  return years
+}
+
 function toIsoDate(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
@@ -20,16 +50,14 @@ function toIsoDate(d) {
 /* Month grid used by both DateField and DateTimeField's picker sheet.
    `selected`/`min`/`max` are Date objects or null; `viewDate` is the 1st
    of the month currently on screen (navigation doesn't move `selected`
-   until a day is actually tapped). */
-function MonthCalendar({ selected, viewDate, onNavigate, onSelectDay, min, max }) {
+   until a day is actually tapped). Month/year are also directly jumpable
+   (not just +/-1 arrows) — stepping one month at a time from today back to
+   a decades-old birth year is a real, reported usability problem. */
+function MonthCalendar({ selected, viewDate, onNavigate, onJumpTo, onSelectDay, min, max }) {
   const year = viewDate.getFullYear()
   const month = viewDate.getMonth()
   const firstWeekday = new Date(year, month, 1).getDay()
   const daysInMonth = new Date(year, month + 1, 0).getDate()
-  // Capitalize only the leading letter in JS ("Fevereiro de 2024") — a CSS
-  // `capitalize` class would capitalize every word, including the "de".
-  const rawMonthLabel = viewDate.toLocaleDateString('pt-PT', { month: 'long', year: 'numeric' })
-  const monthLabel = rawMonthLabel.charAt(0).toUpperCase() + rawMonthLabel.slice(1)
 
   const cells = []
   for (let i = 0; i < firstWeekday; i++) cells.push(null)
@@ -37,21 +65,34 @@ function MonthCalendar({ selected, viewDate, onNavigate, onSelectDay, min, max }
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between gap-2 mb-4">
         <button
           type="button"
           onClick={() => onNavigate(-1)}
           aria-label="Mês anterior"
-          className="w-9 h-9 flex items-center justify-center rounded-full text-court-600 hover:bg-court-50 transition-colors duration-fast"
+          className="w-9 h-9 shrink-0 flex items-center justify-center rounded-full text-court-600 hover:bg-court-50 transition-colors duration-fast"
         >
           <ChevronLeft size={20} />
         </button>
-        <span className="font-extrabold text-court-900">{monthLabel}</span>
+        <div className="flex items-center gap-1.5 flex-1 min-w-0">
+          <Select
+            value={month}
+            onChange={(m) => onJumpTo(year, Number(m))}
+            options={MONTH_OPTIONS}
+            className="flex-1 min-w-0 py-2"
+          />
+          <Select
+            value={year}
+            onChange={(y) => onJumpTo(Number(y), month)}
+            options={yearOptionsFor(min, max)}
+            className="w-24 shrink-0 py-2"
+          />
+        </div>
         <button
           type="button"
           onClick={() => onNavigate(1)}
           aria-label="Mês seguinte"
-          className="w-9 h-9 flex items-center justify-center rounded-full text-court-600 hover:bg-court-50 transition-colors duration-fast"
+          className="w-9 h-9 shrink-0 flex items-center justify-center rounded-full text-court-600 hover:bg-court-50 transition-colors duration-fast"
         >
           <ChevronRight size={20} />
         </button>
@@ -109,6 +150,10 @@ export function DateField({ value, onChange, max, min, placeholder = 'Seleciona 
     setViewDate((d) => new Date(d.getFullYear(), d.getMonth() + delta, 1))
   }
 
+  const jumpTo = (year, month) => {
+    setViewDate(new Date(year, month, 1))
+  }
+
   const selectDay = (day) => {
     onChange(toIsoDate(new Date(viewDate.getFullYear(), viewDate.getMonth(), day)))
     setOpen(false)
@@ -148,6 +193,7 @@ export function DateField({ value, onChange, max, min, placeholder = 'Seleciona 
               selected={selectedDate}
               viewDate={viewDate}
               onNavigate={navigate}
+              onJumpTo={jumpTo}
               onSelectDay={selectDay}
               min={minDate}
               max={maxDate}
@@ -194,6 +240,10 @@ export function DateTimeField({ value, onChange, placeholder = 'Seleciona data e
 
   const navigate = (delta) => {
     setViewDate((d) => new Date(d.getFullYear(), d.getMonth() + delta, 1))
+  }
+
+  const jumpTo = (year, month) => {
+    setViewDate(new Date(year, month, 1))
   }
 
   const selectDay = (day) => {
@@ -243,6 +293,7 @@ export function DateTimeField({ value, onChange, placeholder = 'Seleciona data e
               selected={pendingDate}
               viewDate={viewDate}
               onNavigate={navigate}
+              onJumpTo={jumpTo}
               onSelectDay={selectDay}
               min={null}
               max={null}
