@@ -176,7 +176,7 @@ export function DateField({ value, onChange, max, min, placeholder = 'Seleciona 
           onClick={() => setOpen(false)}
         >
           <div
-            className="bg-surface rounded-t-card sm:rounded-card shadow-lift w-full sm:max-w-md max-h-[90vh] overflow-y-auto p-5 animate-pop"
+            className="bg-surface rounded-t-card sm:rounded-card shadow-lift w-full sm:max-w-md max-h-[90vh] overflow-y-auto overflow-x-hidden p-5 animate-pop"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-4">
@@ -276,7 +276,7 @@ export function DateTimeField({ value, onChange, placeholder = 'Seleciona data e
           onClick={() => setOpen(false)}
         >
           <div
-            className="bg-surface rounded-t-card sm:rounded-card shadow-lift w-full sm:max-w-md max-h-[90vh] overflow-y-auto p-5 animate-pop"
+            className="bg-surface rounded-t-card sm:rounded-card shadow-lift w-full sm:max-w-md max-h-[90vh] overflow-y-auto overflow-x-hidden p-5 animate-pop"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-4">
@@ -298,13 +298,18 @@ export function DateTimeField({ value, onChange, placeholder = 'Seleciona data e
               min={null}
               max={null}
             />
-            <div className="mt-4">
+            <div className="mt-4 min-w-0">
               <label className="block text-sm font-extrabold text-court-900 mb-2">Hora</label>
+              {/* iOS Safari's native time-picker control can ignore `width:
+                  100%` and render at its own internal width instead,
+                  pushing past the card's right edge — `min-w-0` overrides
+                  the implicit "don't shrink below content size" default
+                  that causes it. */}
               <input
                 type="time"
                 value={pendingTime}
                 onChange={(e) => setPendingTime(e.target.value)}
-                className="input-field"
+                className="input-field w-full min-w-0 box-border"
                 aria-label="Hora"
               />
             </div>
