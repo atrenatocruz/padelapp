@@ -50,8 +50,8 @@ function Segmented({ options, value, onChange }) {
           onClick={() => onChange(opt.value)}
           className={`px-3.5 py-2 min-h-[44px] rounded-ctrl text-sm font-extrabold transition-all duration-fast ${
             value === opt.value
-              ? 'bg-court-900 text-white'
-              : 'bg-surface text-muted border border-line hover:text-court-900'
+              ? 'bg-ink-900 text-white'
+              : 'bg-surface text-muted border border-line hover:text-ink-900'
           }`}
         >
           {opt.label}
@@ -357,7 +357,7 @@ export default function Admin() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-3xl font-bold text-apple-darkgray">Painel Admin</h2>
+        <h2 className="text-3xl font-bold text-ink-900">Painel Admin</h2>
         <p className="text-gray-600 mt-1">Gerir jogos, membros e definições</p>
       </div>
 
@@ -367,7 +367,7 @@ export default function Admin() {
           onClick={() => setActiveTab('games')}
           className={`px-6 py-3 rounded-xl font-semibold transition-all whitespace-nowrap ${
             activeTab === 'games'
-              ? 'bg-apple-blue text-white'
+              ? 'bg-ink-700 text-white'
               : 'bg-white text-gray-600 hover:bg-gray-50'
           }`}
         >
@@ -378,7 +378,7 @@ export default function Admin() {
           onClick={() => setActiveTab('members')}
           className={`px-6 py-3 rounded-xl font-semibold transition-all whitespace-nowrap ${
             activeTab === 'members'
-              ? 'bg-apple-blue text-white'
+              ? 'bg-ink-700 text-white'
               : 'bg-white text-gray-600 hover:bg-gray-50'
           }`}
         >
@@ -389,7 +389,7 @@ export default function Admin() {
           onClick={() => setActiveTab('settings')}
           className={`px-6 py-3 rounded-xl font-semibold transition-all whitespace-nowrap ${
             activeTab === 'settings'
-              ? 'bg-apple-blue text-white'
+              ? 'bg-ink-700 text-white'
               : 'bg-white text-gray-600 hover:bg-gray-50'
           }`}
         >
@@ -399,7 +399,7 @@ export default function Admin() {
 
       {loading ? (
         <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-apple-blue"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-ink-700"></div>
         </div>
       ) : (
         <>
@@ -417,7 +417,7 @@ export default function Admin() {
               {/* Create/Edit Game Form */}
               {(showCreateGame || editingGame) && (
                 <div className="card bg-blue-50 border-2 border-blue-200">
-                  <h3 className="text-xl font-semibold text-apple-darkgray mb-4">
+                  <h3 className="text-xl font-semibold text-ink-900 mb-4">
                     {editingGame ? 'Editar jogo' : 'Criar novo jogo'}
                   </h3>
                   <form onSubmit={editingGame ? handleUpdateGame : handleCreateGame} className="space-y-4">
@@ -473,7 +473,7 @@ export default function Admin() {
                         required
                       />
                       <p className="text-sm text-muted mt-1.5">
-                        = <strong className="text-court-900">{(gameForm.num_courts || 1) * 4} jogadores</strong> ({gameForm.num_courts || 1} {gameForm.num_courts === 1 ? 'campo' : 'campos'} × 4)
+                        = <strong className="text-ink-900">{(gameForm.num_courts || 1) * 4} jogadores</strong> ({gameForm.num_courts || 1} {gameForm.num_courts === 1 ? 'campo' : 'campos'} × 4)
                       </p>
                     </div>
 
@@ -498,7 +498,7 @@ export default function Admin() {
                         onChange={(v) => setGameForm({ ...gameForm, game_time_minutes: v })}
                       />
                       <p className="text-sm text-muted mt-1.5">
-                        = <strong className="text-court-900">{totalRounds(gameForm)} rondas</strong> ({gameForm.court_time_minutes}min ÷ {gameForm.game_time_minutes}min)
+                        = <strong className="text-ink-900">{totalRounds(gameForm)} rondas</strong> ({gameForm.court_time_minutes}min ÷ {gameForm.game_time_minutes}min)
                       </p>
                     </div>
 
@@ -544,7 +544,7 @@ export default function Admin() {
                     <div key={game.id} className="card">
                       <div className="flex items-start justify-between mb-4">
                         <div className="flex-1">
-                          <h3 className="text-xl font-semibold text-apple-darkgray mb-2">
+                          <h3 className="text-xl font-semibold text-ink-900 mb-2">
                             {game.title}
                           </h3>
                           <div className="space-y-1 text-gray-600">
@@ -562,7 +562,7 @@ export default function Admin() {
                         <div className="flex gap-2">
                           <button
                             onClick={() => startEditGame(game)}
-                            className="p-2 text-apple-blue hover:bg-blue-50 rounded-lg transition-colors"
+                            className="p-2 text-ink-700 hover:bg-blue-50 rounded-lg transition-colors"
                             title="Editar"
                           >
                             <Edit2 size={20} />
@@ -580,7 +580,7 @@ export default function Admin() {
                       <div className={`inline-block px-4 py-2 rounded-xl font-medium ${
                         game.status === 'open' ? 'bg-blue-100 text-blue-700' :
                         game.status === 'closed' ? 'bg-green-100 text-green-700' :
-                        game.status === 'in_progress' ? 'bg-volt-400 text-court-900' :
+                        game.status === 'in_progress' ? 'bg-lime-400 text-ink-900' :
                         game.status === 'completed' || game.status === 'finished' ? 'bg-gray-100 text-gray-700' :
                         'bg-red-100 text-red-700'
                       }`}>
@@ -611,10 +611,10 @@ export default function Admin() {
                   <div className="flex items-center gap-3.5">
                     <Avatar name={member.name} url={member.avatar_url} size="w-11 h-11 text-sm" />
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-extrabold text-court-900 truncate flex items-center gap-1.5">
+                      <h3 className="font-extrabold text-ink-900 truncate flex items-center gap-1.5">
                         <span className="truncate">{member.name}</span>
                         {member.is_admin && (
-                          <span className="w-2 h-2 rounded-full bg-volt-500 shrink-0" title="Admin" />
+                          <span className="w-2 h-2 rounded-full bg-lime-600 shrink-0" title="Admin" />
                         )}
                       </h3>
                       <p className="text-sm text-muted truncate">
@@ -625,7 +625,7 @@ export default function Admin() {
                     <div className="flex items-center gap-1.5 shrink-0">
                       <button
                         onClick={() => handleToggleAdmin(member.id, member.is_admin)}
-                        className="whitespace-nowrap text-xs font-extrabold px-3 py-2 min-h-[44px] rounded-full bg-court-100 text-court-700 hover:bg-court-200 transition-colors duration-fast"
+                        className="whitespace-nowrap text-xs font-extrabold px-3 py-2 min-h-[44px] rounded-full bg-ink-50 text-ink-700 hover:bg-ink-200 transition-colors duration-fast"
                       >
                         {member.is_admin ? 'Retirar admin' : 'Tornar admin'}
                       </button>
@@ -635,7 +635,7 @@ export default function Admin() {
                           title={`Eliminar ${member.name}`}
                           className="w-10 h-10 flex items-center justify-center rounded-full text-danger hover:bg-danger/10 transition-colors duration-fast"
                         >
-                          <UserX size={19} />
+                          <UserX size={20} />
                         </button>
                       )}
                     </div>
@@ -648,7 +648,7 @@ export default function Admin() {
           {/* Settings Tab */}
           {activeTab === 'settings' && settings && (
             <div className="card">
-              <h3 className="text-xl font-semibold text-apple-darkgray mb-6">
+              <h3 className="text-xl font-semibold text-ink-900 mb-6">
                 Definições do Grupo
               </h3>
               
@@ -692,7 +692,7 @@ export default function Admin() {
                 </div>
 
                 <div className="pt-2 border-t border-gray-200">
-                  <h4 className="text-base font-semibold text-apple-darkgray mt-6 mb-1">
+                  <h4 className="text-base font-semibold text-ink-900 mt-6 mb-1">
                     Sistema de pontos
                   </h4>
                   <p className="text-sm text-gray-500 mb-4">

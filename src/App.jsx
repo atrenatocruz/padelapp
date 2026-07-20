@@ -15,9 +15,9 @@ const ProtectedRoute = ({ children }) => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-apple-gray">
+      <div className="min-h-screen flex items-center justify-center bg-canvas">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-apple-blue mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-ink-700 mx-auto mb-4"></div>
           <p className="text-gray-600">A carregar...</p>
         </div>
       </div>
@@ -37,9 +37,9 @@ const MemberRoute = ({ children }) => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-apple-gray">
+      <div className="min-h-screen flex items-center justify-center bg-canvas">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-apple-blue mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-ink-700 mx-auto mb-4"></div>
           <p className="text-gray-600">A carregar...</p>
         </div>
       </div>
@@ -62,9 +62,9 @@ const AdminRoute = ({ children }) => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-apple-gray">
+      <div className="min-h-screen flex items-center justify-center bg-canvas">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-apple-blue mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-ink-700 mx-auto mb-4"></div>
           <p className="text-gray-600">A carregar...</p>
         </div>
       </div>

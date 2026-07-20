@@ -9,11 +9,11 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'robots.txt', 'apple-touch-icon.png'],
       manifest: {
-        name: 'padel.app',
-        short_name: 'padel.app',
-        description: 'App para gerir jogos de padel do grupo Os Padeleiros',
-        theme_color: '#0B2545',
-        background_color: '#F6F7F3',
+        name: 'alinho',
+        short_name: 'alinho',
+        description: 'App para gerir jogos de padel do grupo alinho',
+        theme_color: '#040404',
+        background_color: '#FFFFFF',
         display: 'standalone',
         icons: [
           {

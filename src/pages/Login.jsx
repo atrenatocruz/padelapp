@@ -150,11 +150,11 @@ export default function Login() {
     }
   }
 
-  const inputLabel = 'block text-sm font-extrabold text-court-900 mb-2'
+  const inputLabel = 'block text-sm font-extrabold text-ink-900 mb-2'
 
   return (
-    <div className="min-h-screen bg-court-900 flex flex-col">
-      {/* Hero — court lines + volt ball */}
+    <div className="min-h-screen bg-ink-900 flex flex-col">
+      {/* Hero — court lines + lime ball */}
       <div className="relative px-6 pt-14 pb-10 text-center overflow-hidden shrink-0">
         <svg
           viewBox="0 0 400 200"
@@ -170,22 +170,22 @@ export default function Login() {
           <h1 className="text-5xl text-white">
             <Wordmark />
           </h1>
-          <p className="text-court-200 mt-3">
+          <p className="text-ink-200 mt-3">
             {mode === 'login' ? 'Bem-vindo de volta' : 'Cria a tua conta'}
           </p>
         </div>
       </div>
 
       {/* Sheet */}
-      <div className="flex-1 bg-sand rounded-t-[28px] px-5 py-8">
+      <div className="flex-1 bg-canvas rounded-t-[28px] px-5 py-8">
         <div className="w-full max-w-md mx-auto">
           {/* Google — primary entry point */}
           <button
             onClick={handleGoogleLogin}
             disabled={googleLoading}
             className="w-full flex items-center justify-center gap-3 py-3.5 px-6 rounded-ctrl min-h-[48px]
-                       bg-surface text-court-900 font-extrabold text-base border border-line shadow-card
-                       hover:bg-court-50 transition-all duration-fast active:scale-[0.98]
+                       bg-surface text-ink-900 font-extrabold text-base border border-line shadow-card
+                       hover:bg-ink-50 transition-all duration-fast active:scale-[0.98]
                        disabled:opacity-40 disabled:pointer-events-none"
           >
             <svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true" className="shrink-0">
@@ -218,8 +218,8 @@ export default function Login() {
               }}
               className={`flex-1 py-2.5 px-4 rounded-[8px] font-extrabold text-sm min-h-[44px] transition-all duration-fast ${
                 mode === 'login'
-                  ? 'bg-court-900 text-white'
-                  : 'text-muted hover:text-court-900'
+                  ? 'bg-ink-900 text-white'
+                  : 'text-muted hover:text-ink-900'
               }`}
             >
               Entrar
@@ -231,8 +231,8 @@ export default function Login() {
               }}
               className={`flex-1 py-2.5 px-4 rounded-[8px] font-extrabold text-sm min-h-[44px] transition-all duration-fast ${
                 mode === 'signup'
-                  ? 'bg-court-900 text-white'
-                  : 'text-muted hover:text-court-900'
+                  ? 'bg-ink-900 text-white'
+                  : 'text-muted hover:text-ink-900'
               }`}
             >
               Criar Conta
@@ -382,14 +382,14 @@ export default function Login() {
           {import.meta.env.DEV && (
             <button
               onClick={handleAdminBypass}
-              className="w-full mt-4 py-3 px-4 rounded-ctrl font-extrabold text-sm border border-dashed border-court-500 text-court-600 hover:bg-court-50 transition-all duration-fast min-h-[48px]"
+              className="w-full mt-4 py-3 px-4 rounded-ctrl font-extrabold text-sm border border-dashed border-ink-500 text-ink-700 hover:bg-ink-50 transition-all duration-fast min-h-[48px]"
             >
               🔓 Entrar como Admin (dev)
             </button>
           )}
 
           <div className="mt-8 text-center">
-            <a href="/instrucoes" className="text-court-600 font-extrabold text-sm hover:underline">
+            <a href="/instrucoes" className="text-ink-700 font-extrabold text-sm hover:underline">
               Ver instruções de utilização
             </a>
           </div>

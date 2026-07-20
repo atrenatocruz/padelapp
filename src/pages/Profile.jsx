@@ -125,15 +125,15 @@ export default function Profile() {
     ? ((stats.game_wins / gamesPlayed) * 100).toFixed(0)
     : 0
 
-  const inputLabel = 'block text-sm font-extrabold text-court-900 mb-2'
+  const inputLabel = 'block text-sm font-extrabold text-ink-900 mb-2'
   const fieldLabel = 'text-[11px] font-extrabold uppercase tracking-widest text-muted'
-  const fieldValue = 'text-base text-court-900 mt-0.5'
+  const fieldValue = 'text-base text-ink-900 mt-0.5'
 
   // Guest view: header only — name + (Convidado) + Sair. No stats, no settings.
   if (isGuest) {
     return (
       <div className="space-y-4">
-        <div className="card bg-court-900 text-center relative overflow-hidden">
+        <div className="card bg-ink-900 text-center relative overflow-hidden">
           <svg
             viewBox="0 0 400 160"
             className="absolute inset-0 w-full h-full text-white/[0.05]"
@@ -145,10 +145,10 @@ export default function Profile() {
           </svg>
           <div className="relative py-2">
             <div className="w-20 h-20 mx-auto mb-3">
-              <Avatar name={profile?.name} url={profile?.avatar_url} size="w-20 h-20 text-3xl" colorClass="bg-volt-400 text-court-900" />
+              <Avatar name={profile?.name} url={profile?.avatar_url} size="w-20 h-20 text-3xl" colorClass="bg-lime-400 text-ink-900" />
             </div>
             <h2 className="text-2xl text-white">
-              {profile?.name} <span className="text-court-200 font-normal">(Convidado)</span>
+              {profile?.name} <span className="text-ink-200 font-normal">(Convidado)</span>
             </h2>
             <div className="mt-2.5">
               <GuestBadge size="md" />
@@ -164,7 +164,7 @@ export default function Profile() {
           }}
           className="w-full"
         >
-          <LogOut size={19} />
+          <LogOut size={20} />
           Sair
         </PrimaryButton>
       </div>
@@ -172,16 +172,16 @@ export default function Profile() {
   }
 
   const statTiles = stats && (gamesPlayed > 0 || (stats.mix_wins || 0) > 0) ? [
-    { icon: Trophy, value: stats.mix_wins || 0, label: 'Mixes ganhos', cls: 'text-volt-500' },
-    { icon: Target, value: gamesPlayed, label: 'Jogos', cls: 'text-court-600' },
+    { icon: Trophy, value: stats.mix_wins || 0, label: 'Mixes ganhos', cls: 'text-lime-600' },
+    { icon: Target, value: gamesPlayed, label: 'Jogos', cls: 'text-ink-700' },
     { icon: Flame, value: stats.game_wins || 0, label: 'Jogos ganhos', cls: 'text-ok' },
-    { icon: Award, value: `${winRate}%`, label: 'Taxa de vitória', cls: 'text-court-600' },
+    { icon: Award, value: `${winRate}%`, label: 'Taxa de vitória', cls: 'text-ink-700' },
   ] : null
 
   return (
     <div className="space-y-4">
       {/* Hero */}
-      <div className="card bg-court-900 text-center relative overflow-hidden">
+      <div className="card bg-ink-900 text-center relative overflow-hidden">
         <svg
           viewBox="0 0 400 160"
           className="absolute inset-0 w-full h-full text-white/[0.05]"
@@ -193,14 +193,14 @@ export default function Profile() {
         </svg>
         <div className="relative py-2">
           <div className="relative w-20 h-20 mx-auto mb-3">
-            <Avatar name={profile?.name} url={profile?.avatar_url} size="w-20 h-20 text-3xl" colorClass="bg-volt-400 text-court-900" />
+            <Avatar name={profile?.name} url={profile?.avatar_url} size="w-20 h-20 text-3xl" colorClass="bg-lime-400 text-ink-900" />
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={uploadingPhoto}
               aria-label="Alterar foto de perfil"
-              className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-court-900 text-white flex items-center justify-center
-                         ring-2 ring-court-900 hover:bg-court-700 transition-colors duration-fast disabled:opacity-50"
+              className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-ink-900 text-white flex items-center justify-center
+                         ring-2 ring-ink-900 hover:bg-ink-700 transition-colors duration-fast disabled:opacity-50"
             >
               {uploadingPhoto ? (
                 <span className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
@@ -225,7 +225,7 @@ export default function Profile() {
               type="button"
               onClick={handleRemovePhoto}
               disabled={uploadingPhoto}
-              className="mt-2 text-court-200 text-xs font-extrabold hover:text-white transition-colors duration-fast disabled:opacity-50"
+              className="mt-2 text-ink-200 text-xs font-extrabold hover:text-white transition-colors duration-fast disabled:opacity-50"
             >
               Remover foto
             </button>
@@ -250,8 +250,8 @@ export default function Profile() {
         <div className="grid grid-cols-2 gap-3">
           {statTiles.map(({ icon: Icon, value, label, cls }) => (
             <div key={label} className="card text-center py-5">
-              <Icon size={21} className={`mx-auto mb-1.5 ${cls}`} />
-              <p className="text-2xl font-extrabold text-court-900 tabular-nums">{value}</p>
+              <Icon size={20} className={`mx-auto mb-1.5 ${cls}`} />
+              <p className="text-2xl font-extrabold text-ink-900 tabular-nums">{value}</p>
               <p className="text-xs text-muted">{label}</p>
             </div>
           ))}
@@ -261,14 +261,14 @@ export default function Profile() {
       {/* Personal info */}
       <div className="card">
         <div className="flex items-center justify-between mb-5">
-          <h3 className="text-lg text-court-900 flex items-center gap-2">
-            <User size={20} className="text-court-600" />
+          <h3 className="text-lg text-ink-900 flex items-center gap-2">
+            <User size={20} className="text-ink-700" />
             Informação pessoal
           </h3>
           {!editing && (
             <button
               onClick={() => setEditing(true)}
-              className="text-court-600 font-extrabold text-sm min-h-[44px] px-2"
+              className="text-ink-700 font-extrabold text-sm min-h-[44px] px-2"
             >
               Editar
             </button>

@@ -88,7 +88,7 @@ export default function PlayerDetails() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16">
-        <div className="animate-spin rounded-full h-10 w-10 border-[3px] border-court-100 border-t-court-600"></div>
+        <div className="animate-spin rounded-full h-10 w-10 border-[3px] border-ink-50 border-t-ink-700"></div>
       </div>
     )
   }
@@ -112,9 +112,9 @@ export default function PlayerDetails() {
   const winRate = winRatePct(stats?.game_wins || 0, played)
 
   const statTiles = [
-    { icon: Trophy, value: stats?.total_points || 0, label: 'Pontos', cls: 'text-volt-500' },
-    { icon: Award, value: `${stats?.mix_wins || 0}/${stats?.mixes_played || 0}`, label: 'Mixes ganhos', cls: 'text-court-600' },
-    { icon: Target, value: played, label: 'Jogos', cls: 'text-court-600' },
+    { icon: Trophy, value: stats?.total_points || 0, label: 'Pontos', cls: 'text-lime-600' },
+    { icon: Award, value: `${stats?.mix_wins || 0}/${stats?.mixes_played || 0}`, label: 'Mixes ganhos', cls: 'text-ink-700' },
+    { icon: Target, value: played, label: 'Jogos', cls: 'text-ink-700' },
     { icon: Award, value: `${winRate}%`, label: 'Taxa de vitória', cls: 'text-ok' },
   ]
 
@@ -122,14 +122,14 @@ export default function PlayerDetails() {
     <div className="space-y-4">
       <button
         onClick={() => navigate(-1)}
-        className="inline-flex items-center gap-1.5 text-court-600 font-extrabold text-sm min-h-[44px] pr-3"
+        className="inline-flex items-center gap-1.5 text-ink-700 font-extrabold text-sm min-h-[44px] pr-3"
       >
-        <ArrowLeft size={18} />
+        <ArrowLeft size={20} />
         Voltar
       </button>
 
       {/* Hero */}
-      <div className="card bg-court-900 text-center relative overflow-hidden">
+      <div className="card bg-ink-900 text-center relative overflow-hidden">
         <svg
           viewBox="0 0 400 160"
           className="absolute inset-0 w-full h-full text-white/[0.05]"
@@ -141,7 +141,7 @@ export default function PlayerDetails() {
         </svg>
         <div className="relative py-2">
           <div className="w-20 h-20 mx-auto mb-3">
-            <Avatar name={player.name} url={player.avatar_url} size="w-20 h-20 text-3xl" colorClass="bg-volt-400 text-court-900" />
+            <Avatar name={player.name} url={player.avatar_url} size="w-20 h-20 text-3xl" colorClass="bg-lime-400 text-ink-900" />
           </div>
           <h2 className="text-2xl text-white">{player.name}</h2>
           <div className="mt-2.5">
@@ -154,8 +154,8 @@ export default function PlayerDetails() {
       <div className="grid grid-cols-2 gap-3">
         {statTiles.map(({ icon: Icon, value, label, cls }) => (
           <div key={label} className="card text-center py-5">
-            <Icon size={21} className={`mx-auto mb-1.5 ${cls}`} />
-            <p className="text-2xl font-extrabold text-court-900 tabular-nums">{value}</p>
+            <Icon size={20} className={`mx-auto mb-1.5 ${cls}`} />
+            <p className="text-2xl font-extrabold text-ink-900 tabular-nums">{value}</p>
             <p className="text-xs text-muted">{label}</p>
           </div>
         ))}
@@ -163,11 +163,11 @@ export default function PlayerDetails() {
 
       {/* Confrontos diretos */}
       <div>
-        <h3 className="text-lg text-court-900 mb-3">Confrontos diretos</h3>
+        <h3 className="text-lg text-ink-900 mb-3">Confrontos diretos</h3>
 
         {h2hLoading ? (
           <div className="flex items-center justify-center py-10">
-            <div className="animate-spin rounded-full h-8 w-8 border-[3px] border-court-100 border-t-court-600"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-[3px] border-ink-50 border-t-ink-700"></div>
           </div>
         ) : h2h.length === 0 ? (
           <EmptyState
@@ -184,19 +184,19 @@ export default function PlayerDetails() {
                   <button
                     onClick={() => toggleOpponent(o.opponent_id)}
                     aria-expanded={isOpen}
-                    className="w-full flex items-center gap-3 px-4 py-3.5 min-h-[56px] transition-colors duration-fast hover:bg-court-50"
+                    className="w-full flex items-center gap-3 px-4 py-3.5 min-h-[56px] transition-colors duration-fast hover:bg-ink-50"
                   >
-                    <div className="w-9 h-9 bg-court-600 text-white rounded-full flex items-center justify-center font-extrabold text-sm shrink-0">
+                    <div className="w-9 h-9 bg-ink-700 text-white rounded-full flex items-center justify-center font-extrabold text-sm shrink-0">
                       {(o.opponent_name || '?').charAt(0).toUpperCase()}
                     </div>
-                    <p className="flex-1 min-w-0 text-left font-extrabold text-court-900 truncate">{o.opponent_name}</p>
+                    <p className="flex-1 min-w-0 text-left font-extrabold text-ink-900 truncate">{o.opponent_name}</p>
                     <span className="text-sm font-extrabold tabular-nums shrink-0">
                       <span className="text-ok">{o.wins}V</span>
                       <span className="text-muted"> – </span>
                       <span className="text-danger">{o.losses}D</span>
                     </span>
                     <ChevronDown
-                      size={18}
+                      size={20}
                       className={`text-muted transition-transform duration-base shrink-0 ${isOpen ? 'rotate-180' : ''}`}
                     />
                   </button>
@@ -209,7 +209,7 @@ export default function PlayerDetails() {
                         h2hMatches.map(m => (
                           <div key={m.match_id} className="flex items-center gap-3 px-4 py-3">
                             <div className="flex-1 min-w-0">
-                              <p className="font-extrabold text-court-900 text-sm truncate">{m.game_title}</p>
+                              <p className="font-extrabold text-ink-900 text-sm truncate">{m.game_title}</p>
                               <p className="text-[11px] text-muted">
                                 {formatMatchDate(m.match_date)} • Ronda {m.round_number}
                                 {m.phase !== 'group' ? ` • ${m.phase}` : ''}
