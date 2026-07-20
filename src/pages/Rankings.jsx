@@ -318,8 +318,14 @@ export default function Rankings() {
               <Select
                 value={selectedMonth || ''}
                 onChange={setSelectedMonth}
-                className="capitalize"
-                options={monthly.months.map(m => ({ value: m.key, label: m.label }))}
+                options={monthly.months.map(m => ({
+                  value: m.key,
+                  // m.label comes lowercase from toLocaleDateString — Select
+                  // renders option rows as plain text with no CSS capitalize
+                  // hook (unlike the old native <option>), so capitalize it
+                  // here once instead of only on the closed trigger.
+                  label: m.label.charAt(0).toUpperCase() + m.label.slice(1),
+                }))}
               />
 
               <div className="space-y-3">
