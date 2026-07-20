@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
-import { MapPin, CheckCircle2, ChevronRight, Lock, Play, Calendar, X, Share2, MessageCircle, Link2, Clock } from 'lucide-react'
+import { MapPin, CheckCircle2, ChevronRight, ChevronDown, Lock, Play, Calendar, X, Share2, MessageCircle, Link2, Clock } from 'lucide-react'
 
 /* ─── Date fields ────────────────────────────────────────────────────────
    Native <input type=date/datetime-local> pickers render in the device
@@ -577,5 +577,68 @@ export function RoundTimer({ startedAt, durationMinutes, isAdmin, onAdjust }) {
         </div>
       )}
     </div>
+  )
+}
+
+/* ─── Select ─────────────────────────────────────────────────────────────
+   Replaces native <select> everywhere in the app: interaction is fine on
+   every browser, but an open native dropdown renders in the browser's own
+   unstyled default look with no reliable cross-browser way to restyle it.
+   `options` is [{ value, label }]. Trades away one thing a native <select>
+   gets for free — typing a letter to jump to a matching option — but none
+   of this app's option lists are long enough for that to matter. */
+export function Select({ value, onChange, options, placeholder = 'Seleciona…', className = '' }) {
+  const [open, setOpen] = useState(false)
+  const selected = options.find((o) => o.value === value)
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className={`input-field flex items-center justify-between text-left ${selected ? 'text-court-900' : 'text-muted'} ${className}`}
+      >
+        <span className="truncate">{selected ? selected.label : placeholder}</span>
+        <ChevronDown size={18} className="text-court-600 shrink-0 ml-2" />
+      </button>
+
+      {open && createPortal(
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-court-900/50 animate-fade-in"
+          onClick={() => setOpen(false)}
+        >
+          <div
+            className="bg-surface rounded-t-card sm:rounded-card shadow-lift w-full sm:max-w-md max-h-[70vh] overflow-y-auto animate-pop"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-5 pt-5 pb-3">
+              <h3 className="text-lg text-court-900">{placeholder}</h3>
+              <button
+                onClick={() => setOpen(false)}
+                aria-label="Fechar"
+                className="w-9 h-9 flex items-center justify-center rounded-full text-muted hover:bg-court-50 hover:text-court-900 transition-colors duration-fast"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="px-2 pb-5">
+              {options.map((o) => (
+                <button
+                  key={o.value}
+                  type="button"
+                  onClick={() => { onChange(o.value); setOpen(false) }}
+                  className={`w-full text-left px-3.5 py-3 rounded-ctrl text-base font-extrabold transition-colors duration-fast ${
+                    o.value === value ? 'bg-volt-400/20 text-court-900' : 'text-court-900 hover:bg-court-50'
+                  }`}
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+    </>
   )
 }
