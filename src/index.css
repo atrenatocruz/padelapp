@@ -25,7 +25,7 @@
      (e.g. bg-danger/10). Hex equivalents in comments. */
 
   /* Color — ink (near-black + neutral grays). Primary family, replaces
-     the old court-blue scale. */
+     the old navy/blue ramp. */
   --ink-50:  243 244 246;   /* #F3F4F6 — card background */
   --ink-200: 156 163 175;   /* #9CA3AF — muted text, placeholders, icon borders */
   --ink-500: 75 85 99;      /* #4B5563 — supporting body copy, secondary labels */
@@ -43,11 +43,11 @@
   --line:    229 231 235;   /* #E5E7EB — hairline borders */
   --muted:   75 85 99;      /* #4B5563 — Dark Gray: "supporting body copy and
                                 secondary label values" per the style guide.
-                                Fixes a gap in the design spec, which mapped
-                                court-500 to this same value/role but never
-                                explicitly addressed the separate --muted
-                                token — left unfixed it would've been the one
-                                surviving old-brand color (#5C6B7A). */
+                                Fixes a design-spec gap: the old blue ramp's
+                                mid step mapped to this same value/role, but
+                                the separate --muted token was never assigned
+                                explicitly — left unfixed it would've been the
+                                one surviving old-brand color (#5C6B7A). */
   --ok:      16 185 129;    /* #10B981 */
   --danger:  239 68 68;     /* #EF4444 */
   --warning: 245 158 11;    /* #F59E0B — pending states, temporary notices (new, not yet consumed) */
