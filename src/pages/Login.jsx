@@ -154,7 +154,7 @@ export default function Login() {
 
   return (
     <div className="min-h-screen bg-ink-900 flex flex-col">
-      {/* Hero — court lines + volt ball */}
+      {/* Hero — court lines + lime ball */}
       <div className="relative px-6 pt-14 pb-10 text-center overflow-hidden shrink-0">
         <svg
           viewBox="0 0 400 200"

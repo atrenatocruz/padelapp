@@ -158,7 +158,7 @@ export default function Rankings() {
   const isUserJoined = (game) =>
     game.participants?.some(p => p.user_id === profile?.id || p.partner_id === profile?.id)
 
-  // Position chip: 1st gets the volt, 2nd/3rd get ink tones, rest neutral
+  // Position chip: 1st gets the lime, 2nd/3rd get ink tones, rest neutral
   const positionStyle = (i) => {
     if (i === 0) return 'bg-lime-400 text-ink-900'
     if (i === 1) return 'bg-ink-900 text-white'
