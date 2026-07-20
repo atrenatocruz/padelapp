@@ -1,35 +1,158 @@
 import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
-import { MapPin, CheckCircle2, ChevronRight, ChevronDown, Lock, Play, Calendar, X, Share2, MessageCircle, Link2, Clock } from 'lucide-react'
+import { MapPin, CheckCircle2, ChevronRight, ChevronDown, ChevronLeft, Lock, Play, Calendar, X, Share2, MessageCircle, Link2, Clock } from 'lucide-react'
 
 /* ─── Date fields ────────────────────────────────────────────────────────
-   Native <input type=date/datetime-local> pickers render in the device
-   locale (English months on many phones) and look inconsistent. These wrap
-   the native picker in a styled, always-Portuguese display: the visible box
-   shows a pt-PT formatted value; a transparent native input on top opens the
-   OS picker and holds the value. Best of both — native UX, our formatting. */
+   Native <input type=date/datetime-local> pickers open reliably on iOS
+   Safari (any tap opens the full OS picker) but not on desktop Chrome/
+   Edge/Firefox, where only a click on the browser's own tiny built-in
+   calendar icon opens anything. Both fields below are fully custom instead
+   — a styled trigger box (unchanged look) opens our own portal'd bottom
+   sheet with a month-grid calendar, so behavior is identical everywhere. */
 
-export function DateField({ value, onChange, required, max, min, placeholder = 'Seleciona a data' }) {
+const WEEKDAY_LABELS = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S']
+
+function toIsoDate(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+/* Month grid used by both DateField and DateTimeField's picker sheet.
+   `selected`/`min`/`max` are Date objects or null; `viewDate` is the 1st
+   of the month currently on screen (navigation doesn't move `selected`
+   until a day is actually tapped). */
+function MonthCalendar({ selected, viewDate, onNavigate, onSelectDay, min, max }) {
+  const year = viewDate.getFullYear()
+  const month = viewDate.getMonth()
+  const firstWeekday = new Date(year, month, 1).getDay()
+  const daysInMonth = new Date(year, month + 1, 0).getDate()
+  const monthLabel = viewDate.toLocaleDateString('pt-PT', { month: 'long', year: 'numeric' })
+
+  const cells = []
+  for (let i = 0; i < firstWeekday; i++) cells.push(null)
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d)
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <button
+          type="button"
+          onClick={() => onNavigate(-1)}
+          aria-label="Mês anterior"
+          className="w-9 h-9 flex items-center justify-center rounded-full text-court-600 hover:bg-court-50 transition-colors duration-fast"
+        >
+          <ChevronLeft size={20} />
+        </button>
+        <span className="font-extrabold text-court-900 capitalize">{monthLabel}</span>
+        <button
+          type="button"
+          onClick={() => onNavigate(1)}
+          aria-label="Mês seguinte"
+          className="w-9 h-9 flex items-center justify-center rounded-full text-court-600 hover:bg-court-50 transition-colors duration-fast"
+        >
+          <ChevronRight size={20} />
+        </button>
+      </div>
+      <div className="grid grid-cols-7 gap-1 mb-1">
+        {WEEKDAY_LABELS.map((w, i) => (
+          <div key={i} className="text-center text-[11px] font-extrabold uppercase text-muted py-1">{w}</div>
+        ))}
+      </div>
+      <div className="grid grid-cols-7 gap-1">
+        {cells.map((d, i) => {
+          if (d === null) return <div key={`e${i}`} />
+          const cellDate = new Date(year, month, d)
+          const isSelected = !!selected
+            && selected.getFullYear() === year && selected.getMonth() === month && selected.getDate() === d
+          const disabled = (min && cellDate < min) || (max && cellDate > max)
+          return (
+            <button
+              key={d}
+              type="button"
+              disabled={disabled}
+              onClick={() => onSelectDay(d)}
+              className={`h-10 rounded-ctrl text-sm font-extrabold transition-colors duration-fast ${
+                isSelected ? 'bg-volt-400 text-court-900'
+                : disabled ? 'text-muted/40 cursor-not-allowed'
+                : 'text-court-900 hover:bg-court-50'
+              }`}
+            >
+              {d}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+export function DateField({ value, onChange, max, min, placeholder = 'Seleciona a data' }) {
+  const [open, setOpen] = useState(false)
+  const selectedDate = value ? new Date(value + 'T00:00:00') : null
+  const minDate = min ? new Date(min + 'T00:00:00') : null
+  const maxDate = max ? new Date(max + 'T00:00:00') : null
+  const [viewDate, setViewDate] = useState(selectedDate || new Date())
+
   const display = value
     ? new Date(value + 'T00:00:00').toLocaleDateString('pt-PT', { day: '2-digit', month: 'long', year: 'numeric' })
     : placeholder
+
+  const openPicker = () => {
+    setViewDate(selectedDate || new Date())
+    setOpen(true)
+  }
+
+  const navigate = (delta) => {
+    setViewDate((d) => new Date(d.getFullYear(), d.getMonth() + delta, 1))
+  }
+
+  const selectDay = (day) => {
+    onChange(toIsoDate(new Date(viewDate.getFullYear(), viewDate.getMonth(), day)))
+    setOpen(false)
+  }
+
   return (
     <div className="relative">
-      <div className={`input-field flex items-center justify-between ${value ? 'text-court-900' : 'text-muted'}`}>
+      <button
+        type="button"
+        onClick={openPicker}
+        className={`input-field flex items-center justify-between text-left ${value ? 'text-court-900' : 'text-muted'}`}
+      >
         <span className="truncate">{display}</span>
         <Calendar size={18} className="text-court-600 shrink-0 ml-2" />
-      </div>
-      <input
-        type="date"
-        value={value || ''}
-        max={max}
-        min={min}
-        required={required}
-        onChange={(e) => onChange(e.target.value)}
-        aria-label="Data"
-        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-      />
+      </button>
+
+      {open && createPortal(
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-court-900/50 animate-fade-in"
+          onClick={() => setOpen(false)}
+        >
+          <div
+            className="bg-surface rounded-t-card sm:rounded-card shadow-lift w-full sm:max-w-md p-5 animate-pop"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg text-court-900">{placeholder}</h3>
+              <button
+                onClick={() => setOpen(false)}
+                aria-label="Fechar"
+                className="w-9 h-9 flex items-center justify-center rounded-full text-muted hover:bg-court-50 hover:text-court-900 transition-colors duration-fast"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <MonthCalendar
+              selected={selectedDate}
+              viewDate={viewDate}
+              onNavigate={navigate}
+              onSelectDay={selectDay}
+              min={minDate}
+              max={maxDate}
+            />
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   )
 }
