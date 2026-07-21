@@ -14,6 +14,9 @@ let lastPostedHash = null
 // repost was a create/edit, the eventual send tags @all — a rapid
 // create+edit within the debounce window doesn't lose the tag.
 let pendingTagAll = false
+// Sticky across debounce coalescing, same reasoning as pendingTagAll: names
+// of anyone auto-promoted from suplente to confirmed since the last repost.
+let pendingPromotedNames = []
 
 function hash(str) {
   let h = 0
@@ -23,13 +26,13 @@ function hash(str) {
   return h
 }
 
-async function postCombinedRoster(sendText, getGroupMentions, { tagAll = false } = {}) {
+async function postCombinedRoster(sendText, getGroupMentions, { tagAll = false, promotedNames = [] } = {}) {
   const settings = await getSettings()
   if (!settings.whatsapp_group_jid) return
 
   const openMixes = await getOpenMixes()
   const mixStates = await Promise.all(openMixes.map((mix) => loadGame(mix.id)))
-  const text = buildCombinedRosterMessage(mixStates)
+  const text = buildCombinedRosterMessage(mixStates, { promotedNames })
   if (!text) return // nothing open right now — nothing to broadcast
 
   const nextHash = hash(text)
@@ -44,14 +47,17 @@ async function postCombinedRoster(sendText, getGroupMentions, { tagAll = false }
   lastPostedHash = nextHash
 }
 
-function scheduleRepost(sendText, getGroupMentions, { tagAll = false } = {}) {
+function scheduleRepost(sendText, getGroupMentions, { tagAll = false, promotedNames = [] } = {}) {
   pendingTagAll = pendingTagAll || tagAll
+  pendingPromotedNames = pendingPromotedNames.concat(promotedNames)
   if (debounceTimer) clearTimeout(debounceTimer)
   debounceTimer = setTimeout(() => {
     debounceTimer = null
     const shouldTagAll = pendingTagAll
+    const namesToAnnounce = pendingPromotedNames
     pendingTagAll = false
-    postCombinedRoster(sendText, getGroupMentions, { tagAll: shouldTagAll }).catch((err) =>
+    pendingPromotedNames = []
+    postCombinedRoster(sendText, getGroupMentions, { tagAll: shouldTagAll, promotedNames: namesToAnnounce }).catch((err) =>
       console.error('Failed to repost combined roster:', err)
     )
   }, DEBOUNCE_MS)
@@ -90,12 +96,31 @@ export function startSync({ sendText, getGroupMentions }) {
 
   supabase
     .channel('whatsapp-bot-participants')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'participants' }, () => {
-      // Always recomputed fresh from the DB at post time, and the hash
-      // check above skips a no-op send — no need to pre-filter which
-      // mix this row belongs to. Someone joining/leaving isn't a
-      // create/edit, so this never tags @all.
-      scheduleRepost(sendText, getGroupMentions)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'participants' }, async (payload) => {
+      // A promotion is an UPDATE from waitlisted -> confirmed (the
+      // check_game_promote trigger). `old` is available because
+      // participants has REPLICA IDENTITY FULL (migration_whatsapp_bot.sql).
+      const isPromotion =
+        payload.eventType === 'UPDATE' &&
+        payload.old?.status === 'waitlisted' &&
+        payload.new?.status === 'confirmed'
+
+      if (!isPromotion) {
+        // Always recomputed fresh from the DB at post time, and the hash
+        // check above skips a no-op send — no need to pre-filter which
+        // mix this row belongs to. Someone joining/leaving isn't a
+        // create/edit, so this never tags @all.
+        scheduleRepost(sendText, getGroupMentions)
+        return
+      }
+
+      const { data: promotedProfile } = await supabase
+        .from('profiles')
+        .select('name')
+        .eq('id', payload.new.user_id)
+        .single()
+
+      scheduleRepost(sendText, getGroupMentions, { promotedNames: [promotedProfile?.name || 'Jogador'] })
     })
     .subscribe()
 
