@@ -13,6 +13,30 @@ const IN_WORDS = ['in', 'dentro', 'estou dentro', 'to dentro', 'tou dentro', 'al
 const OUT_WORDS = ['out', 'fora', 'estou fora', 'saio']
 const HELP_WORDS = ['/help', 'help', 'ajuda', '/ajuda']
 
+const SUPLENTE_CONFIRM_TTL_MS = 10 * 60 * 1000
+
+// Tracks "we asked sender X whether they want to join mix Y as a
+// suplente" so their very next message is interpreted as that answer
+// instead of a fresh command. In-memory only, keyed by sender+group —
+// lost on bot restart, which is an acceptable trade-off since restarts
+// are rare and the worst case is the person just retries "in".
+const pendingSuplenteConfirmations = new Map()
+
+function pendingKey(senderPn, groupJid) {
+  return `${senderPn}:${groupJid}`
+}
+
+function getPendingConfirmation(senderPn, groupJid) {
+  const key = pendingKey(senderPn, groupJid)
+  const entry = pendingSuplenteConfirmations.get(key)
+  if (!entry) return null
+  if (Date.now() > entry.expiresAt) {
+    pendingSuplenteConfirmations.delete(key)
+    return null
+  }
+  return entry
+}
+
 /**
  * Parses one message into { action, code } or null (silently ignored —
  * covers all normal group chatter). `code`, when present, is a trailing
@@ -43,10 +67,13 @@ function formatMixLine(mix) {
 }
 
 /**
- * Handles one incoming group message. Only acts on exact "in"/"out"/"help"
- * text, optionally followed by a 4-digit mix code (see parseCommand);
- * everything else — including all normal group chatter — is silently
- * ignored.
+ * Handles one incoming group message. First checks whether the sender has
+ * a live "queres entrar como suplente?" question pending (see
+ * `pendingSuplenteConfirmations`) — if so, this message is treated as the
+ * Sim/Não answer, not a fresh command. Otherwise, only acts on exact
+ * "in"/"out"/"help" text, optionally followed by a 4-digit mix code (see
+ * parseCommand); everything else — including all normal group chatter —
+ * is silently ignored.
  *
  * Successful joins/leaves don't get an explicit reply here: they write to
  * `participants`, which sync.js's Realtime subscription picks up and turns
@@ -58,14 +85,68 @@ export async function handleGroupMessage({ groupJid, senderPn, text, message }, 
   const settings = await getSettings()
   if (!settings.whatsapp_group_jid || groupJid !== settings.whatsapp_group_jid) return
 
-  const parsed = parseCommand(text)
-  if (!parsed) return
-  const { action, code } = parsed
-
   // Quote the sender's own message so a reply is unambiguous even when
   // several people send commands close together. Every reply also points
   // back to /help, except the help listing itself.
   const reply = (msg) => sendText(groupJid, `${msg}${HELP_FOOTER}`, { quoted: message })
+
+  async function resolveProfileOrReply() {
+    const profile = await resolveProfileByPhoneJid(senderPn)
+    if (!profile) {
+      await reply(
+        `🤖 Não te encontrei na app 😅 Regista-te primeiro em ${config.appUrl} e confirma o teu número de telemóvel no perfil.`
+      )
+    }
+    return profile
+  }
+
+  const pending = getPendingConfirmation(senderPn, groupJid)
+  if (pending) {
+    const normalized = stripAccents(text.trim().toLowerCase())
+    const key = pendingKey(senderPn, groupJid)
+
+    if (normalized === 'sim') {
+      pendingSuplenteConfirmations.delete(key)
+
+      const { game } = await loadGame(pending.gameId)
+      const gameIsFuture = new Date(game.date).getTime() > Date.now()
+      if (!OPEN_STATUSES.has(game.status) || !gameIsFuture) {
+        await reply('🤖 Este mix já não está disponível para inscrições.')
+        return
+      }
+
+      const profile = await resolveProfileOrReply()
+      if (!profile) return
+
+      const { error: insertError } = await supabase
+        .from('participants')
+        .insert([{ game_id: pending.gameId, user_id: profile.id, status: 'waitlisted', joined_alone: true }])
+
+      if (insertError && insertError.code !== '23505') {
+        throw new Error(`Failed to insert waitlisted participant: ${insertError.message}`)
+      }
+      // No reply — the participants INSERT triggers a roster repost via sync.js.
+      return
+    }
+
+    if (normalized === 'nao') {
+      pendingSuplenteConfirmations.delete(key)
+      return
+    }
+
+    if (!pending.reprompted) {
+      pending.reprompted = true
+      await reply('🤖 Não percebi 🤔 Responde só com *Sim* ou *Não*.')
+      return
+    }
+    // Already reprompted once for this pending question — stop nagging
+    // and fall through to normal command parsing below (this might be a
+    // genuine command, not a stray reply).
+  }
+
+  const parsed = parseCommand(text)
+  if (!parsed) return
+  const { action, code } = parsed
 
   if (action === 'help') {
     await sendText(groupJid, HELP_TEXT, { quoted: message })
@@ -76,16 +157,6 @@ export async function handleGroupMessage({ groupJid, senderPn, text, message }, 
   if (openMixes.length === 0) {
     await reply('🤖 Não há nenhum mix com inscrições abertas neste momento.')
     return
-  }
-
-  async function resolveProfileOrReply() {
-    const profile = await resolveProfileByPhoneJid(senderPn)
-    if (!profile) {
-      await reply(
-        `🤖 Não te encontrei na app 😅 Regista-te primeiro em ${config.appUrl} e confirma o teu número de telemóvel no perfil.`
-      )
-    }
-    return profile
   }
 
   // Joins/leaves a specific, already-resolved mix — the same logic
@@ -109,22 +180,32 @@ export async function handleGroupMessage({ groupJid, senderPn, text, message }, 
 
     const { data: existingRows, error: existingError } = await supabase
       .from('participants')
-      .select('id, user_id, partner_id')
+      .select('id, user_id, partner_id, status')
       .eq('game_id', game.id)
-      .eq('status', 'confirmed')
+      .in('status', ['confirmed', 'waitlisted'])
 
     if (existingError) throw new Error(`Failed to check existing participants: ${existingError.message}`)
 
-    const ownRow = existingRows.find((row) => row.user_id === profile.id)
+    const ownConfirmedRow = existingRows.find((row) => row.user_id === profile.id && row.status === 'confirmed')
+    const ownWaitlistRow = existingRows.find((row) => row.user_id === profile.id && row.status === 'waitlisted')
     const asPartnerRow = existingRows.find((row) => row.partner_id === profile.id)
 
     if (action === 'in') {
-      if (ownRow || asPartnerRow) {
+      if (ownConfirmedRow || asPartnerRow) {
         await reply('🤖 Já estás inscrito neste mix! 🎾')
         return
       }
+      if (ownWaitlistRow) {
+        await reply('🤖 Já estás na lista de suplentes deste mix! 🎾')
+        return
+      }
       if (people.length >= capacity) {
-        await reply('🤖 O mix já está completo! 😢 Fica atento à próxima.')
+        pendingSuplenteConfirmations.set(pendingKey(senderPn, groupJid), {
+          gameId: game.id,
+          expiresAt: Date.now() + SUPLENTE_CONFIRM_TTL_MS,
+          reprompted: false,
+        })
+        await reply('🤖 Mix cheio! Queres entrar como suplente? Responde com *Sim* ou *Não*.')
         return
       }
 
@@ -148,12 +229,12 @@ export async function handleGroupMessage({ groupJid, senderPn, text, message }, 
       await reply('🤖 Inscreveste-te em dupla pela app — para sair, usa a app 📱')
       return
     }
-    if (!ownRow) {
+    if (!ownConfirmedRow) {
       await reply('🤖 Não estás inscrito neste mix.')
       return
     }
 
-    const { error: deleteError } = await supabase.from('participants').delete().eq('id', ownRow.id)
+    const { error: deleteError } = await supabase.from('participants').delete().eq('id', ownConfirmedRow.id)
     if (deleteError) throw new Error(`Failed to remove participant: ${deleteError.message}`)
     // No reply — the participants DELETE triggers a roster repost via sync.js.
   }
