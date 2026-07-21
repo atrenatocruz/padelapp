@@ -112,7 +112,16 @@ export async function connectWhatsApp({ onGroupMessage }) {
   return {
     sendText: async (groupJid, text, options = {}) => {
       if (!sock) throw new Error('WhatsApp socket not connected yet')
-      await sock.sendMessage(groupJid, { text }, options.quoted ? { quoted: options.quoted } : undefined)
+      const content = { text, ...(options.mentions ? { mentions: options.mentions } : {}) }
+      await sock.sendMessage(groupJid, content, options.quoted ? { quoted: options.quoted } : undefined)
+    },
+    // Participant JIDs for the group, used to build a silent "@all" tag
+    // (mentioning everyone pings them even though the visible text just
+    // says "@all" rather than spelling out each name).
+    getGroupMentions: async (groupJid) => {
+      if (!sock) throw new Error('WhatsApp socket not connected yet')
+      const metadata = await sock.groupMetadata(groupJid)
+      return metadata.participants.map((p) => p.id)
     },
   }
 }
