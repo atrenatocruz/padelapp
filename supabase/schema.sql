@@ -43,6 +43,7 @@ CREATE TABLE memberships (
   organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   is_admin BOOLEAN NOT NULL DEFAULT FALSE,
   is_guest BOOLEAN NOT NULL DEFAULT FALSE,
+  is_test BOOLEAN NOT NULL DEFAULT FALSE, -- admin-created test players (see migration_round_timer_and_test_users.sql)
   level TEXT NOT NULL DEFAULT 'iniciante', -- iniciante, intermédio, avançado (ou N2-N6)
   created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW()),
   UNIQUE (user_id, organization_id)
@@ -63,6 +64,8 @@ CREATE TABLE games (
   status TEXT DEFAULT 'open', -- open, closed, in_progress, finished, cancelled
   winner_team_id UUID,
   created_by UUID REFERENCES profiles(id),
+  round_started_at TIMESTAMPTZ, -- current round only; NULL = no round in progress
+  round_duration_minutes INTEGER,
   created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW()),
   updated_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW())
 );
