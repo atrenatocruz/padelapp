@@ -115,7 +115,7 @@ function buildMixBlock({ game, people, capacity }, { showCode }) {
     } else if (showCode) {
       lines.push(`🙋 Escreve *In ${game.short_code}* para entrares, *Out ${game.short_code}* para saíres`)
     } else {
-      lines.push(`🙋 Escreve *In* ou *Alinho* para entrares, *Out* para saíres`)
+      lines.push(`🙋 Escreve *In* ou *Alinho* para entrares, *Out* ou *Fora* para saíres`)
     }
   }
 
