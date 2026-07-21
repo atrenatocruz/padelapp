@@ -87,13 +87,13 @@ export function formatDateTime(isoDate) {
   return `${datePart} · ${timePart}`
 }
 
-/** Builds one mix's block of text (no footer — footer is added once for the whole combined message). */
-function buildMixBlock({ game, people, capacity }) {
+/** Builds one mix's block of text (no footer — footer is added once for the whole combined message). `showCode` is false when this is the only open mix — nothing to disambiguate, so the code and the join/leave instructions drop it. */
+function buildMixBlock({ game, people, capacity }, { showCode }) {
   const isCancelled = game.status === 'cancelled'
   const lines = []
 
   lines.push(`🎾 *${game.title}*`)
-  lines.push(`🆔 Código: ${game.short_code}`)
+  if (showCode) lines.push(`🆔 Código: ${game.short_code}`)
   lines.push(`📅 ${formatDateTime(game.date)}`)
   if (game.location) lines.push(`📍 ${game.location}`)
   lines.push(`🏟️ ${game.num_courts} campo(s) · ${capacity} vagas`)
@@ -103,14 +103,19 @@ function buildMixBlock({ game, people, capacity }) {
     lines.push('❌ *Mix cancelado.*')
   } else {
     for (let i = 0; i < capacity; i++) {
+      // Blank line every 4 slots — one court's worth of players — so the
+      // list reads as courts, not one long undifferentiated list.
+      if (i > 0 && i % 4 === 0) lines.push('')
       const name = people[i]
       lines.push(name ? `${i + 1}. 🎾 ${firstNameLastInitial(name)}` : `${i + 1}. 🎾 (vaga livre)`)
     }
     lines.push('')
     if (people.length >= capacity) {
       lines.push('✅ *Mix completo!*')
-    } else {
+    } else if (showCode) {
       lines.push(`🙋 Escreve *In ${game.short_code}* para entrares, *Out ${game.short_code}* para saíres`)
+    } else {
+      lines.push(`🙋 Escreve *In* ou *Alinho* para entrares, *Out* para saíres`)
     }
   }
 
@@ -130,8 +135,9 @@ const MIX_SEPARATOR = '\n\n➖➖➖➖➖➖➖➖➖➖\n\n'
 export function buildCombinedRosterMessage(mixStates) {
   if (mixStates.length === 0) return null
 
-  const header = mixStates.length > 1 ? `📋 *Mixes abertos (${mixStates.length})*\n\n` : ''
-  const blocks = mixStates.map(buildMixBlock).join(MIX_SEPARATOR)
+  const showCode = mixStates.length > 1
+  const header = showCode ? `📋 *Mixes abertos (${mixStates.length})*\n\n` : ''
+  const blocks = mixStates.map((state) => buildMixBlock(state, { showCode })).join(MIX_SEPARATOR)
 
   return header + blocks + HELP_FOOTER
 }
