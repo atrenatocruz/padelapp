@@ -122,10 +122,14 @@ export async function handleGroupMessage({ groupJid, senderPn, text, message }, 
         .from('participants')
         .insert([{ game_id: pending.gameId, user_id: profile.id, status: 'waitlisted', joined_alone: true }])
 
-      if (insertError && insertError.code !== '23505') {
+      if (insertError) {
+        if (insertError.code === '23505') {
+          await reply('🤖 Já estás na lista de suplentes deste mix! 🎾')
+          return
+        }
         throw new Error(`Failed to insert waitlisted participant: ${insertError.message}`)
       }
-      // No reply — the participants INSERT triggers a roster repost via sync.js.
+      await reply('🤖 Estás na lista de suplentes! Quando alguém sair, entras automaticamente. 🎾')
       return
     }
 
@@ -227,6 +231,10 @@ export async function handleGroupMessage({ groupJid, senderPn, text, message }, 
     // action === 'out'
     if (asPartnerRow) {
       await reply('🤖 Inscreveste-te em dupla pela app — para sair, usa a app 📱')
+      return
+    }
+    if (ownWaitlistRow) {
+      await reply('🤖 Estás na lista de suplentes — para sair, usa a app 📱')
       return
     }
     if (!ownConfirmedRow) {

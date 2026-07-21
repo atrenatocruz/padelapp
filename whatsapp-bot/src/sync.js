@@ -32,11 +32,19 @@ async function postCombinedRoster(sendText, getGroupMentions, { tagAll = false, 
 
   const openMixes = await getOpenMixes()
   const mixStates = await Promise.all(openMixes.map((mix) => loadGame(mix.id)))
-  const text = buildCombinedRosterMessage(mixStates, { promotedNames })
-  if (!text) return // nothing open right now — nothing to broadcast
+  const baseText = buildCombinedRosterMessage(mixStates)
+  if (!baseText) return // nothing open right now — nothing to broadcast
 
-  const nextHash = hash(text)
+  // Hash only the base roster, never the one-time promotion callout — a
+  // later reconcile tick never carries promotedNames, so hashing the
+  // promo-prefixed text would make that tick look "different" from an
+  // otherwise-unchanged roster and re-send it minus the callout.
+  const nextHash = hash(baseText)
   if (nextHash === lastPostedHash) return
+
+  const text = promotedNames.length > 0
+    ? buildCombinedRosterMessage(mixStates, { promotedNames })
+    : baseText
 
   if (tagAll) {
     const mentions = await getGroupMentions(settings.whatsapp_group_jid)
