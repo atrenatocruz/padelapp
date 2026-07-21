@@ -132,12 +132,15 @@ const MIX_SEPARATOR = '\n\n➖➖➖➖➖➖➖➖➖➖\n\n'
  * mix gets its own block (see buildMixBlock); returns null when there's
  * nothing to show (caller should skip sending in that case).
  */
-export function buildCombinedRosterMessage(mixStates) {
+export function buildCombinedRosterMessage(mixStates, { promotedNames = [] } = {}) {
   if (mixStates.length === 0) return null
 
   const showCode = mixStates.length > 1
+  const promoBlock = promotedNames.length > 0
+    ? `${promotedNames.map((name) => `🎉 ${firstNameLastInitial(name)} subiu da lista de suplentes!`).join('\n')}\n\n`
+    : ''
   const header = showCode ? `📋 *Mixes abertos (${mixStates.length})*\n\n` : ''
   const blocks = mixStates.map((state) => buildMixBlock(state, { showCode })).join(MIX_SEPARATOR)
 
-  return header + blocks + HELP_FOOTER
+  return promoBlock + header + blocks + HELP_FOOTER
 }

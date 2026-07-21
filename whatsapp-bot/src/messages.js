@@ -12,5 +12,7 @@ Se houver mais do que um mix aberto ao mesmo tempo, o bot diz-te o código (🆔
 • *In 1234*
 • *Out 1234*
 
+Se o mix estiver cheio, o bot pergunta se queres entrar como suplente — responde *Sim* ou *Não*. Quando alguém sair, o primeiro suplente entra automaticamente.
+
 Para veres esta lista:
 • */help*`
