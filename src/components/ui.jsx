@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
-import { MapPin, CheckCircle2, ChevronRight, ChevronDown, ChevronLeft, Lock, Play, Calendar, X, Share2, MessageCircle, Link2, Clock } from 'lucide-react'
+import { MapPin, CheckCircle2, ChevronRight, ChevronDown, ChevronLeft, Lock, Play, Calendar, X, Share2, MessageCircle, Link2 } from 'lucide-react'
 
 /* ─── Date fields ────────────────────────────────────────────────────────
    Native <input type=date/datetime-local> pickers open reliably on iOS
@@ -70,7 +70,7 @@ function MonthCalendar({ selected, viewDate, onNavigate, onJumpTo, onSelectDay, 
           type="button"
           onClick={() => onNavigate(-1)}
           aria-label="Mês anterior"
-          className="w-9 h-9 shrink-0 flex items-center justify-center rounded-full text-court-600 hover:bg-court-50 transition-colors duration-fast"
+          className="w-9 h-9 shrink-0 flex items-center justify-center rounded-full text-ink-700 hover:bg-ink-50 transition-colors duration-fast"
         >
           <ChevronLeft size={20} />
         </button>
@@ -92,7 +92,7 @@ function MonthCalendar({ selected, viewDate, onNavigate, onJumpTo, onSelectDay, 
           type="button"
           onClick={() => onNavigate(1)}
           aria-label="Mês seguinte"
-          className="w-9 h-9 shrink-0 flex items-center justify-center rounded-full text-court-600 hover:bg-court-50 transition-colors duration-fast"
+          className="w-9 h-9 shrink-0 flex items-center justify-center rounded-full text-ink-700 hover:bg-ink-50 transition-colors duration-fast"
         >
           <ChevronRight size={20} />
         </button>
@@ -116,9 +116,9 @@ function MonthCalendar({ selected, viewDate, onNavigate, onJumpTo, onSelectDay, 
               disabled={disabled}
               onClick={() => onSelectDay(d)}
               className={`h-10 rounded-ctrl text-sm font-extrabold transition-colors duration-fast ${
-                isSelected ? 'bg-volt-400 text-court-900'
+                isSelected ? 'bg-lime-400 text-ink-900'
                 : disabled ? 'text-muted/40 cursor-not-allowed'
-                : 'text-court-900 hover:bg-court-50'
+                : 'text-ink-900 hover:bg-ink-50'
               }`}
             >
               {d}
@@ -164,15 +164,15 @@ export function DateField({ value, onChange, max, min, placeholder = 'Seleciona 
       <button
         type="button"
         onClick={openPicker}
-        className={`input-field flex items-center justify-between text-left ${value ? 'text-court-900' : 'text-muted'}`}
+        className={`input-field flex items-center justify-between text-left ${value ? 'text-ink-900' : 'text-muted'}`}
       >
         <span className="truncate">{display}</span>
-        <Calendar size={18} className="text-court-600 shrink-0 ml-2" />
+        <Calendar size={20} className="text-ink-700 shrink-0 ml-2" />
       </button>
 
       {open && createPortal(
         <div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-court-900/50 animate-fade-in"
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-ink-900/50 animate-fade-in"
           onClick={() => setOpen(false)}
         >
           <div
@@ -180,13 +180,13 @@ export function DateField({ value, onChange, max, min, placeholder = 'Seleciona 
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg text-court-900">{placeholder}</h3>
+              <h3 className="text-lg text-ink-900">{placeholder}</h3>
               <button
                 onClick={() => setOpen(false)}
                 aria-label="Fechar"
-                className="w-9 h-9 flex items-center justify-center rounded-full text-muted hover:bg-court-50 hover:text-court-900 transition-colors duration-fast"
+                className="w-9 h-9 flex items-center justify-center rounded-full text-muted hover:bg-ink-50 hover:text-ink-900 transition-colors duration-fast"
               >
-                <X size={18} />
+                <X size={20} />
               </button>
             </div>
             <MonthCalendar
@@ -264,15 +264,15 @@ export function DateTimeField({ value, onChange, placeholder = 'Seleciona data e
       <button
         type="button"
         onClick={openPicker}
-        className={`input-field flex items-center justify-between text-left ${value ? 'text-court-900' : 'text-muted'}`}
+        className={`input-field flex items-center justify-between text-left ${value ? 'text-ink-900' : 'text-muted'}`}
       >
         <span className="truncate">{display}</span>
-        <Calendar size={18} className="text-court-600 shrink-0 ml-2" />
+        <Calendar size={20} className="text-ink-700 shrink-0 ml-2" />
       </button>
 
       {open && createPortal(
         <div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-court-900/50 animate-fade-in"
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-ink-900/50 animate-fade-in"
           onClick={() => setOpen(false)}
         >
           <div
@@ -280,13 +280,13 @@ export function DateTimeField({ value, onChange, placeholder = 'Seleciona data e
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg text-court-900">{placeholder}</h3>
+              <h3 className="text-lg text-ink-900">{placeholder}</h3>
               <button
                 onClick={() => setOpen(false)}
                 aria-label="Fechar"
-                className="w-9 h-9 flex items-center justify-center rounded-full text-muted hover:bg-court-50 hover:text-court-900 transition-colors duration-fast"
+                className="w-9 h-9 flex items-center justify-center rounded-full text-muted hover:bg-ink-50 hover:text-ink-900 transition-colors duration-fast"
               >
-                <X size={18} />
+                <X size={20} />
               </button>
             </div>
             <MonthCalendar
@@ -299,7 +299,7 @@ export function DateTimeField({ value, onChange, placeholder = 'Seleciona data e
               max={null}
             />
             <div className="mt-4 min-w-0">
-              <label className="block text-sm font-extrabold text-court-900 mb-2">Hora</label>
+              <label className="block text-sm font-extrabold text-ink-900 mb-2">Hora</label>
               {/* iOS Safari's native time-picker control can ignore `width:
                   100%` and render at its own internal width instead,
                   pushing past the card's right edge — `min-w-0` overrides
@@ -330,7 +330,7 @@ export function DateTimeField({ value, onChange, placeholder = 'Seleciona data e
 }
 
 /* ════════════════════════════════════════════════════════════════════════
-   UI kit — Os Padeleiros
+   UI kit — alinho
    Reusable components: PrimaryButton, LevelBadge, PlayerAvatarRow,
    EmptyState, MixCard. Design tokens live in src/index.css.
    ════════════════════════════════════════════════════════════════════════ */
@@ -362,12 +362,12 @@ export const levelRange = (levels) => {
 }
 
 /* ─── PrimaryButton ──────────────────────────────────────────────────────
-   variant: "volt" (main CTA) | "navy" | "ghost" | "danger" */
-export function PrimaryButton({ variant = 'volt', className = '', children, ...props }) {
+   variant: "lime" (main CTA) | "navy" | "ghost" | "danger" | "whatsapp" */
+export function PrimaryButton({ variant = 'lime', className = '', children, ...props }) {
   const variants = {
-    volt:     'bg-volt-400 text-court-900 hover:bg-volt-300 shadow-card',
-    navy:     'bg-court-600 text-white hover:bg-court-500 shadow-card',
-    ghost:    'bg-surface text-court-900 border border-line hover:bg-court-50 hover:border-court-200',
+    lime:     'bg-lime-400 text-ink-900 hover:bg-lime-600 shadow-card',
+    navy:     'bg-ink-700 text-white hover:bg-ink-500 shadow-card',
+    ghost:    'bg-surface text-ink-900 border border-line hover:bg-ink-50 hover:border-ink-200',
     danger:   'bg-danger/10 text-danger hover:bg-danger/15',
     whatsapp: 'bg-[#25D366] text-white hover:bg-[#20bd5a] shadow-card',
   }
@@ -386,7 +386,7 @@ export function PrimaryButton({ variant = 'volt', className = '', children, ...p
 }
 
 /* ─── LevelBadge ─────────────────────────────────────────────────────────
-   Impossible to misread: bold label on ink. `me` gets the volt treatment.
+   Impossible to misread: bold label on ink. `me` gets the lime treatment.
    Pass `range` (string) instead of `level` for a level range. */
 export function LevelBadge({ level, range, me = false, size = 'sm' }) {
   const text = range ?? levelMeta(level).label
@@ -398,9 +398,9 @@ export function LevelBadge({ level, range, me = false, size = 'sm' }) {
   return (
     <span
       title={title}
-      className={`inline-flex items-center rounded-full font-extrabold tracking-wide uppercase
+      className={`inline-flex items-center rounded-full font-mono font-extrabold tracking-wide uppercase
                   ${sizes[size]}
-                  ${me ? 'bg-volt-400 text-court-900' : 'bg-court-900 text-volt-400'}`}
+                  ${me ? 'bg-lime-400 text-ink-900' : 'bg-ink-900 text-lime-400'}`}
     >
       {text}
     </span>
@@ -417,8 +417,8 @@ export function GuestBadge({ size = 'sm', label = 'Convidado' }) {
   return (
     <span
       title={label === 'Teste' ? 'Jogador de teste (admin)' : 'Jogador convidado'}
-      className={`inline-flex items-center rounded-full font-extrabold tracking-wide uppercase
-                  border border-dashed border-court-200 bg-sand text-muted ${sizes[size]}`}
+      className={`inline-flex items-center rounded-full font-mono font-extrabold tracking-wide uppercase
+                  border border-dashed border-ink-200 bg-canvas text-muted ${sizes[size]}`}
     >
       {label}
     </span>
@@ -431,7 +431,7 @@ export function GuestBadge({ size = 'sm', label = 'Convidado' }) {
    any extra utility classes a call site needs, e.g. a ring); `colorClass`
    is the fallback bg/text pair — each call site keeps its own current
    look for people with no photo yet. */
-export function Avatar({ name, url, size = 'w-10 h-10 text-sm', colorClass = 'bg-court-600 text-white' }) {
+export function Avatar({ name, url, size = 'w-10 h-10 text-sm', colorClass = 'bg-ink-700 text-white' }) {
   const base = `${size} rounded-full flex items-center justify-center shrink-0 font-extrabold overflow-hidden`
   if (url) {
     return <img src={url} alt={name || ''} className={`${base} object-cover`} />
@@ -459,18 +459,18 @@ export function PlayerAvatarRow({ players = [], max = 4, size = 'md', cap = 6 })
         {Array.from({ length: empty }).map((_, i) => (
           <div
             key={`e${i}`}
-            className={`${dim} rounded-full border-2 border-dashed border-court-200
-                        bg-sand ring-2 ring-surface`}
+            className={`${dim} rounded-full border-2 border-dashed border-ink-200
+                        bg-canvas ring-2 ring-surface`}
           />
         ))}
         {overflow > 0 && (
-          <div className={`${dim} relative rounded-full bg-court-100 text-court-700 font-extrabold
+          <div className={`${dim} relative rounded-full bg-ink-50 text-ink-700 font-extrabold
                           flex items-center justify-center ring-2 ring-surface`}>
             +{overflow}
           </div>
         )}
       </div>
-      <span className="text-sm font-extrabold text-court-900 tabular-nums">
+      <span className="text-sm font-extrabold text-ink-900 tabular-nums">
         {players.length}<span className="text-muted font-normal">/{max}</span>
       </span>
     </div>
@@ -478,24 +478,27 @@ export function PlayerAvatarRow({ players = [], max = 4, size = 'md', cap = 6 })
 }
 
 /* ─── EmptyState ─────────────────────────────────────────────────────────
-   Friendly copy + court-line motif + always one clear action. */
+   Friendly copy + court-line motif (now with a small lime ball-ring accent,
+   a nod to the logo) + always one clear action. */
 export function EmptyState({ icon: Icon, title, subtitle, action }) {
   return (
     <div className="card text-center py-12 px-6 animate-fade-up">
       <div className="relative w-24 h-24 mx-auto mb-5">
         {/* faint court-line motif */}
-        <svg viewBox="0 0 96 96" className="absolute inset-0 text-court-100" fill="none">
+        <svg viewBox="0 0 96 96" className="absolute inset-0 text-ink-50" fill="none">
           <rect x="8" y="14" width="80" height="68" rx="10" stroke="currentColor" strokeWidth="2.5" />
           <line x1="48" y1="14" x2="48" y2="82" stroke="currentColor" strokeWidth="2.5" />
           <line x1="8" y1="48" x2="88" y2="48" stroke="currentColor" strokeWidth="2.5" strokeDasharray="4 5" />
+          {/* ball-ring accent, echoing the logo's lime ring glyph */}
+          <circle cx="76" cy="24" r="9" stroke="#C5DD01" strokeWidth="2.5" />
         </svg>
         {Icon && (
           <div className="absolute inset-0 flex items-center justify-center">
-            <Icon size={30} className="text-court-600" />
+            <Icon size={32} strokeWidth={2} className="text-ink-700" />
           </div>
         )}
       </div>
-      <h3 className="text-lg text-court-900 mb-1">{title}</h3>
+      <h3 className="text-lg text-ink-900 mb-1">{title}</h3>
       {subtitle && <p className="text-muted text-sm mb-6">{subtitle}</p>}
       {action}
     </div>
@@ -538,33 +541,33 @@ export function MixCard({ game, joined = false }) {
       className={`card press block hover:shadow-lift relative overflow-hidden
                   ${isDone ? 'opacity-60' : ''}`}
     >
-      {/* joined = volt accent bar, instantly distinct */}
-      {joined && <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-volt-400" />}
+      {/* joined = lime accent bar, instantly distinct */}
+      {joined && <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-lime-400" />}
 
       <div className="flex items-start justify-between gap-3 mb-3">
         {/* When — the strongest element on the card */}
         <div>
-          <p className="text-xs font-extrabold uppercase tracking-widest text-court-600">{dayLabel}</p>
-          <p className="text-2xl text-court-900 leading-tight">{time}</p>
+          <p className="text-xs font-extrabold uppercase tracking-widest text-ink-700">{dayLabel}</p>
+          <p className="text-2xl text-ink-900 leading-tight">{time}</p>
         </div>
 
         {/* State — color + icon, never text alone */}
         {isLive ? (
-          <span className="inline-flex items-center gap-1.5 bg-volt-400 text-court-900 text-xs font-extrabold px-3 py-1.5 rounded-full">
+          <span className="inline-flex items-center gap-1.5 bg-lime-400 text-ink-900 text-xs font-extrabold px-3 py-1.5 rounded-full">
             <Play size={14} /> A decorrer
           </span>
         ) : isDone ? (
-          <span className="inline-flex items-center gap-1.5 bg-court-100 text-court-700 text-xs font-extrabold px-3 py-1.5 rounded-full">
+          <span className="inline-flex items-center gap-1.5 bg-ink-50 text-ink-700 text-xs font-extrabold px-3 py-1.5 rounded-full">
             <CheckCircle2 size={14} /> Mix terminado
           </span>
         ) : joined ? (
-          <span className="inline-flex items-center gap-1.5 bg-volt-400 text-court-900 text-xs font-extrabold px-3 py-1.5 rounded-full">
+          <span className="inline-flex items-center gap-1.5 bg-lime-400 text-ink-900 text-xs font-extrabold px-3 py-1.5 rounded-full">
             <CheckCircle2 size={14} /> Inscrito
           </span>
         ) : null}
       </div>
 
-      <h3 className="text-lg text-court-900 leading-snug mb-1">{game.title}</h3>
+      <h3 className="text-lg text-ink-900 leading-snug mb-1">{game.title}</h3>
       {game.location && (
         <p className="flex items-center gap-1.5 text-muted text-sm mb-4">
           <MapPin size={15} className="shrink-0" /> {game.location}
@@ -577,8 +580,8 @@ export function MixCard({ game, joined = false }) {
           {range && <LevelBadge range={range} />}
         </div>
         {game.status === 'open' && !joined && !isFull && (
-          <span className="ml-auto inline-flex items-center gap-0.5 text-court-600 text-sm font-extrabold">
-            Jogar <ChevronRight size={17} />
+          <span className="ml-auto inline-flex items-center gap-0.5 text-ink-700 text-sm font-extrabold">
+            Jogar <ChevronRight size={16} />
           </span>
         )}
         {isClosed && !isLive && !isDone && (
@@ -632,7 +635,7 @@ export function ShareModal({ title = 'Partilhar', message, url, onClose }) {
   // renders inline in the page instead of as a fullscreen overlay.
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-court-900/50 animate-fade-in"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-ink-900/50 animate-fade-in"
       onClick={onClose}
     >
       <div
@@ -641,39 +644,39 @@ export function ShareModal({ title = 'Partilhar', message, url, onClose }) {
       >
         <div className="flex items-center justify-between px-5 pt-5 pb-3">
           <div className="flex items-center gap-2">
-            <Share2 size={20} className="text-court-600" />
-            <h3 className="text-lg text-court-900">{title}</h3>
+            <Share2 size={20} className="text-ink-700" />
+            <h3 className="text-lg text-ink-900">{title}</h3>
           </div>
           <button
             onClick={onClose}
             aria-label="Fechar"
-            className="w-9 h-9 flex items-center justify-center rounded-full text-muted hover:bg-court-50 hover:text-court-900 transition-colors duration-fast"
+            className="w-9 h-9 flex items-center justify-center rounded-full text-muted hover:bg-ink-50 hover:text-ink-900 transition-colors duration-fast"
           >
-            <X size={18} />
+            <X size={20} />
           </button>
         </div>
 
         <div className="px-5 pb-5 space-y-4">
-          <div className="bg-sand rounded-ctrl p-3.5 text-sm text-court-900 whitespace-pre-line">
+          <div className="bg-canvas rounded-ctrl p-3.5 text-sm text-ink-900 whitespace-pre-line">
             {fullText}
           </div>
 
           {editingCaption ? (
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="text-sm font-extrabold text-court-900">Legenda</label>
+                <label className="text-sm font-extrabold text-ink-900">Legenda</label>
                 <div className="flex items-center gap-3">
                   {caption !== message && (
                     <button
                       onClick={() => setCaption(message)}
-                      className="text-court-600 text-xs font-extrabold"
+                      className="text-ink-700 text-xs font-extrabold"
                     >
                       Repor
                     </button>
                   )}
                   <button
                     onClick={() => setEditingCaption(false)}
-                    className="text-court-600 text-xs font-extrabold"
+                    className="text-ink-700 text-xs font-extrabold"
                   >
                     Concluído
                   </button>
@@ -690,12 +693,12 @@ export function ShareModal({ title = 'Partilhar', message, url, onClose }) {
           ) : (
             <div className="flex items-center justify-between gap-3">
               <p className="flex-1 min-w-0 truncate text-sm text-muted">
-                <span className="font-extrabold text-court-900">Legenda: </span>
+                <span className="font-extrabold text-ink-900">Legenda: </span>
                 {caption}
               </p>
               <button
                 onClick={() => setEditingCaption(true)}
-                className="text-court-600 text-xs font-extrabold shrink-0"
+                className="text-ink-700 text-xs font-extrabold shrink-0"
               >
                 Editar
               </button>
@@ -705,21 +708,21 @@ export function ShareModal({ title = 'Partilhar', message, url, onClose }) {
           <button
             onClick={handleCopyLink}
             className="w-full flex items-center gap-2.5 rounded-ctrl border border-line px-3.5 py-3 min-h-[48px]
-                       text-sm font-extrabold text-court-900 hover:border-court-200 transition-colors duration-fast"
+                       text-sm font-extrabold text-ink-900 hover:border-ink-200 transition-colors duration-fast"
           >
-            <Link2 size={17} className="text-court-600 shrink-0" />
+            <Link2 size={16} className="text-ink-700 shrink-0" />
             <span className="flex-1 min-w-0 text-left truncate text-muted font-normal">{url}</span>
-            <span className="text-court-600 shrink-0">{copied ? 'Copiado!' : 'Copiar'}</span>
+            <span className="text-ink-700 shrink-0">{copied ? 'Copiado!' : 'Copiar'}</span>
           </button>
 
           <PrimaryButton variant="whatsapp" onClick={handleWhatsApp} className="w-full">
-            <MessageCircle size={19} />
+            <MessageCircle size={20} />
             Partilhar via WhatsApp
           </PrimaryButton>
 
           {typeof navigator !== 'undefined' && navigator.share && (
             <PrimaryButton variant="ghost" onClick={handleNativeShare} className="w-full">
-              <Share2 size={19} />
+              <Share2 size={20} />
               Mais opções
             </PrimaryButton>
           )}
@@ -825,9 +828,27 @@ export function RoundTimer({ startedAt, durationMinutes, isAdmin, onAdjust }) {
   const mm = Math.floor(totalSeconds / 60).toString().padStart(2, '0')
   const ss = (totalSeconds % 60).toString().padStart(2, '0')
 
+  // Ball-ring progress indicator — a nod to the logo's lime ring glyph,
+  // sweeping clockwise from full down to empty as the round counts down.
+  const totalDurationMs = (durationMinutes || 0) * 60000
+  const remainingFraction = totalDurationMs > 0 ? Math.max(0, Math.min(1, remainingMs / totalDurationMs)) : 0
+  const ringRadius = 8
+  const ringCircumference = 2 * Math.PI * ringRadius
+  const ringOffset = ringCircumference * (1 - remainingFraction)
+
   return (
-    <div className={`inline-flex items-center gap-2 ${expired ? 'text-danger animate-pulse' : 'text-court-900'}`}>
-      <Clock size={16} className="shrink-0" />
+    <div className={`inline-flex items-center gap-2 ${expired ? 'text-danger animate-pulse' : 'text-ink-900'}`}>
+      <svg width="20" height="20" viewBox="0 0 20 20" className="shrink-0 -rotate-90">
+        <circle cx="10" cy="10" r={ringRadius} fill="none" stroke="currentColor" strokeOpacity="0.15" strokeWidth="2.5" />
+        <circle
+          cx="10" cy="10" r={ringRadius} fill="none"
+          stroke={expired ? '#EF4444' : '#C5DD01'}
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeDasharray={ringCircumference}
+          strokeDashoffset={ringOffset}
+        />
+      </svg>
       <span className="font-extrabold tabular-nums text-sm">{mm}:{ss}</span>
       {isAdmin && onAdjust && (
         <div className="flex items-center gap-1 ml-1">
@@ -835,7 +856,7 @@ export function RoundTimer({ startedAt, durationMinutes, isAdmin, onAdjust }) {
             type="button"
             onClick={() => onAdjust(-5)}
             aria-label="Menos 5 minutos"
-            className="w-6 h-6 flex items-center justify-center rounded-full bg-court-100 text-court-700 text-xs font-extrabold hover:bg-court-200 transition-colors duration-fast"
+            className="w-6 h-6 flex items-center justify-center rounded-full bg-ink-50 text-ink-700 text-xs font-extrabold hover:bg-ink-200 transition-colors duration-fast"
           >
             −5
           </button>
@@ -843,7 +864,7 @@ export function RoundTimer({ startedAt, durationMinutes, isAdmin, onAdjust }) {
             type="button"
             onClick={() => onAdjust(5)}
             aria-label="Mais 5 minutos"
-            className="w-6 h-6 flex items-center justify-center rounded-full bg-court-100 text-court-700 text-xs font-extrabold hover:bg-court-200 transition-colors duration-fast"
+            className="w-6 h-6 flex items-center justify-center rounded-full bg-ink-50 text-ink-700 text-xs font-extrabold hover:bg-ink-200 transition-colors duration-fast"
           >
             +5
           </button>
@@ -869,15 +890,15 @@ export function Select({ value, onChange, options, placeholder = 'Seleciona…',
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className={`input-field flex items-center justify-between text-left ${selected ? 'text-court-900' : 'text-muted'} ${className}`}
+        className={`input-field flex items-center justify-between text-left ${selected ? 'text-ink-900' : 'text-muted'} ${className}`}
       >
         <span className="truncate">{selected ? selected.label : placeholder}</span>
-        <ChevronDown size={18} className="text-court-600 shrink-0 ml-2" />
+        <ChevronDown size={20} className="text-ink-700 shrink-0 ml-2" />
       </button>
 
       {open && createPortal(
         <div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-court-900/50 animate-fade-in"
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-ink-900/50 animate-fade-in"
           onClick={() => setOpen(false)}
         >
           <div
@@ -885,13 +906,13 @@ export function Select({ value, onChange, options, placeholder = 'Seleciona…',
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between px-5 pt-5 pb-3">
-              <h3 className="text-lg text-court-900">{placeholder}</h3>
+              <h3 className="text-lg text-ink-900">{placeholder}</h3>
               <button
                 onClick={() => setOpen(false)}
                 aria-label="Fechar"
-                className="w-9 h-9 flex items-center justify-center rounded-full text-muted hover:bg-court-50 hover:text-court-900 transition-colors duration-fast"
+                className="w-9 h-9 flex items-center justify-center rounded-full text-muted hover:bg-ink-50 hover:text-ink-900 transition-colors duration-fast"
               >
-                <X size={18} />
+                <X size={20} />
               </button>
             </div>
             <div className="px-2 pb-5">
@@ -901,7 +922,7 @@ export function Select({ value, onChange, options, placeholder = 'Seleciona…',
                   type="button"
                   onClick={() => { onChange(o.value); setOpen(false) }}
                   className={`w-full text-left px-3.5 py-3 rounded-ctrl text-base font-extrabold transition-colors duration-fast ${
-                    o.value === value ? 'bg-volt-400/20 text-court-900' : 'text-court-900 hover:bg-court-50'
+                    o.value === value ? 'bg-lime-400/20 text-ink-900' : 'text-ink-900 hover:bg-ink-50'
                   }`}
                 >
                   {o.label}

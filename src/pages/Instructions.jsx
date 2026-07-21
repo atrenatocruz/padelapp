@@ -4,23 +4,23 @@ import { Wordmark } from '../components/Layout'
 
 export default function Instructions() {
   return (
-    <div className="min-h-screen bg-apple-gray">
+    <div className="min-h-screen bg-canvas">
       {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center gap-4">
-          <Link to="/" className="text-apple-blue">
+          <Link to="/" className="text-ink-700">
             <ArrowLeft size={24} />
           </Link>
-          <h1 className="text-2xl font-bold text-apple-darkgray">Instruções</h1>
+          <h1 className="text-2xl font-bold text-ink-900">Instruções</h1>
         </div>
       </header>
 
       {/* Content */}
       <main className="max-w-4xl mx-auto px-4 py-6 space-y-6">
         <div className="text-center mb-8">
-          <HelpCircle size={48} className="mx-auto text-apple-blue mb-4" />
-          <h2 className="text-3xl font-bold text-apple-darkgray mb-2">
-            Como usar a <Wordmark />
+          <HelpCircle size={48} className="mx-auto text-ink-700 mb-4" />
+          <h2 className="text-3xl font-bold text-ink-900 mb-2">
+            Como usar a <Wordmark variant="light" className="h-8 inline-block align-middle" />
           </h2>
           <p className="text-gray-600">Instruções rápidas para começar</p>
         </div>
@@ -29,7 +29,7 @@ export default function Instructions() {
         <div className="card space-y-6">
           <div className="space-y-4">
             <div className="flex gap-4">
-              <div className="w-8 h-8 bg-apple-blue text-white rounded-full flex items-center justify-center font-bold flex-shrink-0">
+              <div className="w-8 h-8 bg-ink-700 text-white rounded-full flex items-center justify-center font-bold flex-shrink-0">
                 1
               </div>
               <div>
@@ -40,7 +40,7 @@ export default function Instructions() {
             </div>
 
             <div className="flex gap-4">
-              <div className="w-8 h-8 bg-apple-blue text-white rounded-full flex items-center justify-center font-bold flex-shrink-0">
+              <div className="w-8 h-8 bg-ink-700 text-white rounded-full flex items-center justify-center font-bold flex-shrink-0">
                 2
               </div>
               <div>
@@ -52,7 +52,7 @@ export default function Instructions() {
             </div>
 
             <div className="flex gap-4">
-              <div className="w-8 h-8 bg-apple-blue text-white rounded-full flex items-center justify-center font-bold flex-shrink-0">
+              <div className="w-8 h-8 bg-ink-700 text-white rounded-full flex items-center justify-center font-bold flex-shrink-0">
                 3
               </div>
               <div>
@@ -63,7 +63,7 @@ export default function Instructions() {
             </div>
 
             <div className="flex gap-4">
-              <div className="w-8 h-8 bg-apple-blue text-white rounded-full flex items-center justify-center font-bold flex-shrink-0">
+              <div className="w-8 h-8 bg-ink-700 text-white rounded-full flex items-center justify-center font-bold flex-shrink-0">
                 4
               </div>
               <div>
@@ -74,7 +74,7 @@ export default function Instructions() {
             </div>
 
             <div className="flex gap-4">
-              <div className="w-8 h-8 bg-apple-blue text-white rounded-full flex items-center justify-center font-bold flex-shrink-0">
+              <div className="w-8 h-8 bg-ink-700 text-white rounded-full flex items-center justify-center font-bold flex-shrink-0">
                 5
               </div>
               <div>
@@ -93,7 +93,7 @@ export default function Instructions() {
             </div>
 
             <div className="flex gap-4">
-              <div className="w-8 h-8 bg-apple-blue text-white rounded-full flex items-center justify-center font-bold flex-shrink-0">
+              <div className="w-8 h-8 bg-ink-700 text-white rounded-full flex items-center justify-center font-bold flex-shrink-0">
                 6
               </div>
               <div>
@@ -107,7 +107,7 @@ export default function Instructions() {
             </div>
 
             <div className="flex gap-4">
-              <div className="w-8 h-8 bg-apple-blue text-white rounded-full flex items-center justify-center font-bold flex-shrink-0">
+              <div className="w-8 h-8 bg-ink-700 text-white rounded-full flex items-center justify-center font-bold flex-shrink-0">
                 7
               </div>
               <div>
@@ -120,7 +120,7 @@ export default function Instructions() {
             </div>
 
             <div className="flex gap-4">
-              <div className="w-8 h-8 bg-apple-blue text-white rounded-full flex items-center justify-center font-bold flex-shrink-0">
+              <div className="w-8 h-8 bg-ink-700 text-white rounded-full flex items-center justify-center font-bold flex-shrink-0">
                 8
               </div>
               <div>
@@ -143,7 +143,7 @@ export default function Instructions() {
             </div>
 
             <div className="flex gap-4">
-              <div className="w-8 h-8 bg-apple-blue text-white rounded-full flex items-center justify-center font-bold flex-shrink-0">
+              <div className="w-8 h-8 bg-ink-700 text-white rounded-full flex items-center justify-center font-bold flex-shrink-0">
                 9
               </div>
               <div>
@@ -169,24 +169,24 @@ export default function Instructions() {
         {/* Quick Guide Cards */}
         <div className="grid md:grid-cols-2 gap-4">
           <div className="card">
-            <Calendar size={32} className="text-apple-blue mb-3" />
-            <h3 className="text-lg font-semibold text-apple-darkgray mb-2">Ver jogos</h3>
+            <Calendar size={32} className="text-ink-700 mb-3" />
+            <h3 className="text-lg font-semibold text-ink-900 mb-2">Ver jogos</h3>
             <p className="text-gray-600">
               Na página inicial vês todos os jogos disponíveis. Clica num jogo para ver detalhes.
             </p>
           </div>
 
           <div className="card">
-            <Users size={32} className="text-apple-blue mb-3" />
-            <h3 className="text-lg font-semibold text-apple-darkgray mb-2">Entrar em jogos</h3>
+            <Users size={32} className="text-ink-700 mb-3" />
+            <h3 className="text-lg font-semibold text-ink-900 mb-2">Entrar em jogos</h3>
             <p className="text-gray-600">
               Escolhe se queres jogar sozinho ou com parceiro. Receberás confirmação automática.
             </p>
           </div>
 
           <div className="card">
-            <Trophy size={32} className="text-apple-blue mb-3" />
-            <h3 className="text-lg font-semibold text-apple-darkgray mb-2">Ver ranking</h3>
+            <Trophy size={32} className="text-ink-700 mb-3" />
+            <h3 className="text-lg font-semibold text-ink-900 mb-2">Ver ranking</h3>
             <p className="text-gray-600">
               O ranking mostra, por jogador: <strong>mixes ganhos</strong> (vitórias de mix) e{' '}
               <strong>vitórias/derrotas de jogos</strong> (cada jogo individual dentro dos mixes).
@@ -194,8 +194,8 @@ export default function Instructions() {
           </div>
 
           <div className="card">
-            <Settings size={32} className="text-apple-blue mb-3" />
-            <h3 className="text-lg font-semibold text-apple-darkgray mb-2">Editar perfil</h3>
+            <Settings size={32} className="text-ink-700 mb-3" />
+            <h3 className="text-lg font-semibold text-ink-900 mb-2">Editar perfil</h3>
             <p className="text-gray-600">
               Atualiza o teu nome, contacto e nível de jogo na página de perfil.
             </p>
@@ -204,7 +204,7 @@ export default function Instructions() {
 
         {/* Admin Guide */}
         <div className="card bg-blue-50 border-2 border-blue-200">
-          <h3 className="text-xl font-bold text-apple-darkgray mb-4">
+          <h3 className="text-xl font-bold text-ink-900 mb-4">
             📋 Guia para Administradores
           </h3>
           <div className="space-y-3 text-gray-700">

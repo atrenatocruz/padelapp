@@ -1,6 +1,8 @@
+import { useState, useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import Layout from './components/Layout'
+import SplashScreen from './components/SplashScreen'
 import Login from './pages/Login'
 import Home from './pages/Home'
 import GameDetails from './pages/GameDetails'
@@ -10,18 +12,16 @@ import Profile from './pages/Profile'
 import Admin from './pages/Admin'
 import Instructions from './pages/Instructions'
 
-const ProtectedRoute = ({ children }) => {
-  const { user, loading } = useAuth()
+// showSplash covers both the auth check and the splash's minimum display
+// duration (see AppRoutes) — while true, these guards show the splash
+// instead of their normal redirect/children logic. /login and /instrucoes
+// are unguarded routes and intentionally keep rendering immediately,
+// exactly as before.
+const ProtectedRoute = ({ children, showSplash }) => {
+  const { user } = useAuth()
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-apple-gray">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-apple-blue mx-auto mb-4"></div>
-          <p className="text-gray-600">A carregar...</p>
-        </div>
-      </div>
-    )
+  if (showSplash) {
+    return <SplashScreen />
   }
 
   if (!user) {
@@ -32,18 +32,11 @@ const ProtectedRoute = ({ children }) => {
 }
 
 // Members-only route: guests are redirected to Jogos
-const MemberRoute = ({ children }) => {
-  const { user, isGuest, loading } = useAuth()
+const MemberRoute = ({ children, showSplash }) => {
+  const { user, isGuest } = useAuth()
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-apple-gray">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-apple-blue mx-auto mb-4"></div>
-          <p className="text-gray-600">A carregar...</p>
-        </div>
-      </div>
-    )
+  if (showSplash) {
+    return <SplashScreen />
   }
 
   if (!user) {
@@ -57,18 +50,11 @@ const MemberRoute = ({ children }) => {
   return children
 }
 
-const AdminRoute = ({ children }) => {
-  const { isAdmin, loading } = useAuth()
+const AdminRoute = ({ children, showSplash }) => {
+  const { isAdmin } = useAuth()
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-apple-gray">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-apple-blue mx-auto mb-4"></div>
-          <p className="text-gray-600">A carregar...</p>
-        </div>
-      </div>
-    )
+  if (showSplash) {
+    return <SplashScreen />
   }
 
   if (!isAdmin) {
@@ -79,7 +65,15 @@ const AdminRoute = ({ children }) => {
 }
 
 function AppRoutes() {
-  const { user } = useAuth()
+  const { user, loading: authLoading } = useAuth()
+  const [minDurationElapsed, setMinDurationElapsed] = useState(false)
+
+  useEffect(() => {
+    const timer = setTimeout(() => setMinDurationElapsed(true), 700)
+    return () => clearTimeout(timer)
+  }, [])
+
+  const showSplash = authLoading || !minDurationElapsed
 
   return (
     <Routes>
@@ -88,7 +82,7 @@ function AppRoutes() {
       <Route
         path="/"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute showSplash={showSplash}>
             <Layout>
               <Home />
             </Layout>
@@ -98,7 +92,7 @@ function AppRoutes() {
       <Route
         path="/jogo/:id"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute showSplash={showSplash}>
             <Layout>
               <GameDetails />
             </Layout>
@@ -108,7 +102,7 @@ function AppRoutes() {
       <Route
         path="/rankings"
         element={
-          <MemberRoute>
+          <MemberRoute showSplash={showSplash}>
             <Layout>
               <Rankings />
             </Layout>
@@ -118,7 +112,7 @@ function AppRoutes() {
       <Route
         path="/jogador/:id"
         element={
-          <MemberRoute>
+          <MemberRoute showSplash={showSplash}>
             <Layout>
               <PlayerDetails />
             </Layout>
@@ -128,7 +122,7 @@ function AppRoutes() {
       <Route
         path="/perfil"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute showSplash={showSplash}>
             <Layout>
               <Profile />
             </Layout>
@@ -138,7 +132,7 @@ function AppRoutes() {
       <Route
         path="/admin"
         element={
-          <AdminRoute>
+          <AdminRoute showSplash={showSplash}>
             <Layout>
               <Admin />
             </Layout>

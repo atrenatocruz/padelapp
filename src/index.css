@@ -1,3 +1,17 @@
+/* Self-hosted brand typography. `geist` (the official npm package) only
+   ships Next.js's next/font local-loader entry points and doesn't work in
+   plain Vite (see Global Constraints) — @fontsource/geist-sans and
+   @fontsource/geist-mono are the self-hostable equivalent, same mechanism
+   already used for @fontsource/outfit below. */
+@import '@fontsource/outfit/500.css';
+@import '@fontsource/outfit/600.css';
+@import '@fontsource/outfit/700.css';
+@import '@fontsource/geist-sans/400.css';
+@import '@fontsource/geist-sans/500.css';
+@import '@fontsource/geist-sans/700.css';
+@import '@fontsource/geist-mono/500.css';
+@import '@fontsource/geist-mono/700.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -10,67 +24,78 @@
   /* Colors are RGB channel triplets so Tailwind opacity modifiers work
      (e.g. bg-danger/10). Hex equivalents in comments. */
 
-  /* Color — court blues (primary) */
-  --court-50:  238 244 250;   /* #EEF4FA */
-  --court-100: 220 233 245;   /* #DCE9F5 */
-  --court-200: 185 211 234;   /* #B9D3EA */
-  --court-500: 29 111 184;    /* #1D6FB8 */
-  --court-600: 23 90 153;     /* #175A99 — primary action blue (AA on white) */
-  --court-700: 18 71 122;     /* #12477A */
-  --court-900: 11 37 69;      /* #0B2545 — ink: headings, nav, hero */
+  /* Color — ink (near-black + neutral grays). Primary family, replaces
+     the old navy/blue ramp. */
+  --ink-50:  243 244 246;   /* #F3F4F6 — card background */
+  --ink-200: 156 163 175;   /* #9CA3AF — muted text, placeholders, icon borders */
+  --ink-500: 75 85 99;      /* #4B5563 — supporting body copy, secondary labels */
+  --ink-700: 31 41 55;      /* #1F2937 — high-hierarchy text, links, secondary btn border */
+  --ink-900: 4 4 4;         /* #040404 — near black: headings, header/nav bg */
 
-  /* Color — volt green (the ball). ONE accent, used sparingly. */
-  --volt-300: 228 248 126;    /* #E4F87E */
-  --volt-400: 212 242 75;     /* #D4F24B — CTA / confirmed states */
-  --volt-500: 191 223 51;     /* #BFDF33 */
+  /* Color — lime (the ball). ONE accent, used sparingly. */
+  --lime-100: 248 252 212;  /* #F8FCD4 — soft badge tint */
+  --lime-400: 197 221 1;    /* #C5DD01 — CTA / confirmed states / brand accent */
+  --lime-600: 153 178 0;    /* #99B200 — CTA hover/active (darker), accessible interactive text */
 
   /* Color — neutrals & semantics */
-  --sand:    246 247 243;     /* #F6F7F3 — app background (warm off-white) */
-  --surface: 255 255 255;     /* #FFFFFF — cards */
-  --line:    231 234 227;     /* #E7EAE3 — hairline borders */
-  --muted:   92 107 122;      /* #5C6B7A — secondary text (AA on white & sand) */
-  --ok:      23 138 80;       /* #178A50 */
-  --danger:  217 56 56;       /* #D93838 */
+  --canvas:  255 255 255;   /* #FFFFFF — app background (was: card background) */
+  --surface: 243 244 246;   /* #F3F4F6 — cards (was: #FFFFFF; now the recessed light-gray card) */
+  --line:    229 231 235;   /* #E5E7EB — hairline borders */
+  --muted:   75 85 99;      /* #4B5563 — Dark Gray: "supporting body copy and
+                                secondary label values" per the style guide.
+                                Fixes a design-spec gap: the old blue ramp's
+                                mid step mapped to this same value/role, but
+                                the separate --muted token was never assigned
+                                explicitly — left unfixed it would've been the
+                                one surviving old-brand color (#5C6B7A). */
+  --ok:      16 185 129;    /* #10B981 */
+  --danger:  239 68 68;     /* #EF4444 */
+  --warning: 245 158 11;    /* #F59E0B — pending states, temporary notices (new, not yet consumed) */
 
   /* Radii */
   --radius-card: 16px;
   --radius-ctrl: 12px;
 
-  /* Elevation — soft, no heavy borders */
-  --shadow-card: 0 1px 2px rgba(11, 37, 69, 0.05), 0 4px 16px rgba(11, 37, 69, 0.06);
-  --shadow-lift: 0 2px 4px rgba(11, 37, 69, 0.07), 0 10px 28px rgba(11, 37, 69, 0.10);
+  /* Elevation — soft, no heavy borders. Tint follows the new near-black ink. */
+  --shadow-card: 0 1px 2px rgba(4, 4, 4, 0.05), 0 4px 16px rgba(4, 4, 4, 0.06);
+  --shadow-lift: 0 2px 4px rgba(4, 4, 4, 0.07), 0 10px 28px rgba(4, 4, 4, 0.10);
 
   /* Spacing scale (reference — Tailwind's 4px scale is used directly):
      1=4px  2=8px  3=12px  4=16px  5=20px  6=24px  8=32px  10=40px  12=48px */
 
   /* Type scale (reference):
-     xs=12 sm=14 base=16 lg=18 xl=20 2xl=24 3xl=30 4xl=36 — Manrope 400/800 */
+     xs=12 sm=14 base=16 lg=18 xl=20 2xl=24 3xl=30 4xl=36 —
+     Geist Sans 400/500/700 (body), Outfit 500/600/700 (headings) */
 }
 
 @layer base {
   body {
-    @apply font-sans antialiased bg-sand text-court-900;
+    @apply font-sans antialiased bg-canvas text-ink-900;
   }
-  /* Headings: one strong geometric sans, extrabold, tightened */
+  /* Headings: Outfit, weight steps down the hierarchy per the style guide. */
   h1, h2, h3, h4 {
-    @apply font-extrabold tracking-tight;
+    @apply font-display tracking-tight;
   }
+  h1 { @apply font-bold; }
+  h2 { @apply font-semibold; }
+  h3, h4 { @apply font-medium; }
 }
 
 @layer components {
-  /* Primary CTA — volt (ball) accent, ink text. */
+  /* Primary CTA — lime (ball) accent, ink text. Hover goes DARKER
+     (lime-600), flipped from the old lighter-hover pattern. */
   .btn-primary {
-    @apply bg-volt-400 text-court-900 font-extrabold py-3.5 px-6 rounded-ctrl
+    @apply bg-lime-400 text-ink-900 font-extrabold py-3.5 px-6 rounded-ctrl
            shadow-card transition-all duration-fast
-           hover:bg-volt-300 active:scale-[0.98]
+           hover:bg-lime-600 active:scale-[0.98]
            min-h-[48px] text-base;
   }
 
   /* Secondary — quiet ink outline. */
   .btn-secondary {
-    @apply bg-surface text-court-900 font-extrabold py-3.5 px-6 rounded-ctrl
+    @apply bg-surface text-ink-900 font-extrabold py-3.5 px-6 rounded-ctrl
            border border-line transition-all duration-fast
-           hover:border-court-200 hover:bg-court-50 active:scale-[0.98]
+           hover:border-ink-200 hover:bg-ink-50 active:scale-[0.98]
            min-h-[48px] text-base;
   }
 
@@ -81,8 +106,8 @@
 
   .input-field {
     @apply w-full px-4 py-3.5 text-base rounded-ctrl bg-surface
-           border border-line text-court-900 placeholder:text-muted/60
-           focus:border-court-500 focus:ring-2 focus:ring-court-100
+           border border-line text-ink-900 placeholder:text-muted/60
+           focus:border-ink-500 focus:ring-2 focus:ring-ink-50
            outline-none transition-all duration-fast min-h-[48px];
   }
 
@@ -106,12 +131,17 @@
   from { opacity: 0; }
   to   { opacity: 1; }
 }
+@keyframes pulse-soft {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50%      { transform: scale(1.06); opacity: 0.85; }
+}
 
-.animate-fade-up { animation: fade-up 220ms ease-out both; }
-.animate-pop     { animation: pop 250ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both; }
-.animate-fade-in { animation: fade-in 180ms ease-out both; }
+.animate-fade-up   { animation: fade-up 220ms ease-out both; }
+.animate-pop       { animation: pop 250ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both; }
+.animate-fade-in   { animation: fade-in 180ms ease-out both; }
+.animate-pulse-soft { animation: pulse-soft 1.6s ease-in-out infinite; }
 
 @media (prefers-reduced-motion: reduce) {
-  .animate-fade-up, .animate-pop, .animate-fade-in { animation: none; }
+  .animate-fade-up, .animate-pop, .animate-fade-in, .animate-pulse-soft { animation: none; }
   .press { transition: none; }
 }

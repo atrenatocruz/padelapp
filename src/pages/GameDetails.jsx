@@ -632,7 +632,7 @@ export default function GameDetails() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16">
-        <div className="animate-spin rounded-full h-10 w-10 border-[3px] border-court-100 border-t-court-600"></div>
+        <div className="animate-spin rounded-full h-10 w-10 border-[3px] border-ink-50 border-t-ink-700"></div>
       </div>
     )
   }
@@ -660,12 +660,12 @@ export default function GameDetails() {
           containing block for descendant `fixed` elements, breaking the
           fullscreen overlay otherwise. */}
       {justBooked && createPortal(
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-court-900/50 animate-fade-in" aria-hidden="true">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink-900/50 animate-fade-in" aria-hidden="true">
           <div className="bg-surface rounded-card shadow-lift px-10 py-8 text-center animate-pop">
-            <div className="w-16 h-16 rounded-full bg-volt-400 flex items-center justify-center mx-auto mb-3">
-              <Check size={34} strokeWidth={3} className="text-court-900" />
+            <div className="w-16 h-16 rounded-full bg-lime-400 flex items-center justify-center mx-auto mb-3">
+              <Check size={32} strokeWidth={2} className="text-ink-900" />
             </div>
-            <p className="font-extrabold text-lg text-court-900">Estás dentro!</p>
+            <p className="font-extrabold text-lg text-ink-900">Estás dentro!</p>
             <p className="text-muted text-sm">Bola ao ar 🎾</p>
           </div>
         </div>,
@@ -675,16 +675,16 @@ export default function GameDetails() {
       <div className="flex items-center justify-between">
         <button
           onClick={() => navigate('/')}
-          className="inline-flex items-center gap-1.5 text-court-600 font-extrabold text-sm min-h-[44px] pr-3"
+          className="inline-flex items-center gap-1.5 text-ink-700 font-extrabold text-sm min-h-[44px] pr-3"
         >
-          <ArrowLeft size={18} />
+          <ArrowLeft size={20} />
           Jogos
         </button>
         <button
           onClick={() => setShowShare(true)}
-          className="inline-flex items-center gap-1.5 text-court-600 font-extrabold text-sm min-h-[44px] pl-3"
+          className="inline-flex items-center gap-1.5 text-ink-700 font-extrabold text-sm min-h-[44px] pl-3"
         >
-          <Share2 size={18} />
+          <Share2 size={20} />
           Partilhar
         </button>
       </div>
@@ -700,30 +700,30 @@ export default function GameDetails() {
 
       {/* Hero card */}
       <div className="card relative overflow-hidden">
-        {isUserJoined && <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-volt-400" />}
+        {isUserJoined && <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-lime-400" />}
 
         <div className="flex items-start justify-between gap-3 mb-1">
-          <h1 className="text-2xl text-court-900 leading-tight">{game.title}</h1>
+          <h1 className="text-2xl text-ink-900 leading-tight">{game.title}</h1>
           {isUserJoined && (
-            <span className="inline-flex items-center gap-1.5 bg-volt-400 text-court-900 text-xs font-extrabold px-3 py-1.5 rounded-full shrink-0">
-              <Check size={14} strokeWidth={3} /> Inscrito
+            <span className="inline-flex items-center gap-1.5 bg-lime-400 text-ink-900 text-xs font-extrabold px-3 py-1.5 rounded-full shrink-0">
+              <Check size={14} strokeWidth={2} /> Inscrito
             </span>
           )}
         </div>
 
         <div className="space-y-2 text-muted mt-4">
           <div className="flex items-center gap-2.5">
-            <Calendar size={18} className="text-court-600 shrink-0" />
+            <Calendar size={20} className="text-ink-700 shrink-0" />
             <span className="capitalize">{formatDate(game.date)}</span>
           </div>
           {game.location && (
             <div className="flex items-center gap-2.5">
-              <MapPin size={18} className="text-court-600 shrink-0" />
+              <MapPin size={20} className="text-ink-700 shrink-0" />
               <span>{game.location}</span>
             </div>
           )}
           <div className="flex items-center gap-2.5">
-            <Swords size={18} className="text-court-600 shrink-0" />
+            <Swords size={20} className="text-ink-700 shrink-0" />
             <span>
               {FORMAT_LABEL[game.format] || 'Sobe e desce'} • {numCourts} {numCourts === 1 ? 'campo' : 'campos'} • {roundsTotal} rondas de {game.game_time_minutes || 20}min
             </span>
@@ -741,7 +741,7 @@ export default function GameDetails() {
             </span>
           )}
           {game.status === 'in_progress' && (
-            <span className="ml-auto inline-flex items-center gap-1.5 bg-volt-400 text-court-900 text-xs font-extrabold px-3 py-1.5 rounded-full">
+            <span className="ml-auto inline-flex items-center gap-1.5 bg-lime-400 text-ink-900 text-xs font-extrabold px-3 py-1.5 rounded-full">
               <Play size={14} className="shrink-0" /> A decorrer
             </span>
           )}
@@ -750,26 +750,26 @@ export default function GameDetails() {
 
       {/* Winner (mix finalizado) */}
       {game.status === 'finished' && game.winner_team_id && (
-        <div className="card bg-court-900 text-center">
-          <p className="text-court-200 text-xs font-extrabold uppercase tracking-widest mb-2">🏆 Vencedores do mix</p>
-          <p className="text-2xl font-extrabold text-volt-400">{teamName(game.winner_team_id)}</p>
+        <div className="card bg-ink-900 text-center">
+          <p className="text-ink-200 text-xs font-extrabold uppercase tracking-widest mb-2">🏆 Vencedores do mix</p>
+          <p className="text-2xl font-extrabold text-lime-400">{teamName(game.winner_team_id)}</p>
         </div>
       )}
 
       {/* Estatísticas do mix — classificação final por pontos */}
       {game.status === 'finished' && mixStats.length > 0 && (
         <div className="card">
-          <h3 className="text-lg text-court-900 mb-3">Estatísticas do Mix</h3>
+          <h3 className="text-lg text-ink-900 mb-3">Estatísticas do Mix</h3>
           <div className="space-y-1.5">
             {mixStats.map((s, i) => (
               <div key={s.id} className="flex items-center gap-3 py-2 border-b border-line last:border-0">
                 <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-extrabold tabular-nums shrink-0 ${
-                  i === 0 ? 'bg-volt-400 text-court-900' : 'bg-court-100 text-court-700'
+                  i === 0 ? 'bg-lime-400 text-ink-900' : 'bg-ink-50 text-ink-700'
                 }`}>
                   {i + 1}
                 </span>
                 <div className="flex-1 min-w-0">
-                  <p className="font-extrabold text-court-900 truncate">
+                  <p className="font-extrabold text-ink-900 truncate">
                     {s.user?.name || '—'}
                     {s.mix_won && <span className="ml-1.5">🏆</span>}
                   </p>
@@ -778,7 +778,7 @@ export default function GameDetails() {
                   </p>
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="text-lg font-extrabold text-court-900 tabular-nums">{s.points_earned}</p>
+                  <p className="text-lg font-extrabold text-ink-900 tabular-nums">{s.points_earned}</p>
                   <p className="text-[11px] text-muted">pontos</p>
                 </div>
               </div>
@@ -796,7 +796,7 @@ export default function GameDetails() {
       {/* Começar o Mix (admin, mix cheio) — só forma as duplas; a Ronda 1 arranca à parte */}
       {canStart && (
         <PrimaryButton onClick={handleStartMix} disabled={busy} className="w-full">
-          <Play size={19} />
+          <Play size={20} />
           {busy ? 'A formar duplas…' : 'Começar o Mix'}
         </PrimaryButton>
       )}
@@ -807,14 +807,14 @@ export default function GameDetails() {
           {/* Duplas */}
           <div className="card">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-lg text-court-900">Duplas</h3>
+              <h3 className="text-lg text-ink-900">Duplas</h3>
               {isAdmin && game.status === 'in_progress' && (
                 <button
                   onClick={() => {
                     setEditingPairs(v => !v)
                     setSwapPick(null)
                   }}
-                  className="inline-flex items-center gap-1.5 text-court-600 text-sm font-extrabold min-h-[44px] px-2"
+                  className="inline-flex items-center gap-1.5 text-ink-700 text-sm font-extrabold min-h-[44px] px-2"
                 >
                   <Repeat size={16} />
                   {editingPairs ? 'Concluir' : 'Editar duplas'}
@@ -823,17 +823,17 @@ export default function GameDetails() {
             </div>
 
             {editingPairs && (
-              <p className="text-muted text-sm mb-3 bg-court-50 rounded-ctrl px-3 py-2.5">
-                Toca em <strong className="text-court-900">dois jogadores</strong> (de duplas diferentes) para os trocar.
+              <p className="text-muted text-sm mb-3 bg-ink-50 rounded-ctrl px-3 py-2.5">
+                Toca em <strong className="text-ink-900">dois jogadores</strong> (de duplas diferentes) para os trocar.
               </p>
             )}
 
             <div className="space-y-2">
               {teams.map((t, i) => (
                 <div key={t.id} className={`flex items-center gap-3 rounded-ctrl p-3 ${
-                  t.id === game.winner_team_id ? 'bg-volt-400/20' : 'bg-sand'
+                  t.id === game.winner_team_id ? 'bg-lime-400/20' : 'bg-canvas'
                 }`}>
-                  <span className="w-7 h-7 rounded-full bg-court-600 text-white text-xs font-extrabold flex items-center justify-center shrink-0">
+                  <span className="w-7 h-7 rounded-full bg-ink-700 text-white text-xs font-extrabold flex items-center justify-center shrink-0">
                     {i + 1}
                   </span>
                   {editingPairs ? (
@@ -847,8 +847,8 @@ export default function GameDetails() {
                             disabled={busy}
                             className={`px-3 py-2 min-h-[40px] rounded-full text-sm font-extrabold transition-all duration-fast active:scale-[0.97] ${
                               picked
-                                ? 'bg-volt-400 text-court-900 ring-2 ring-court-900'
-                                : 'bg-surface text-court-900 border border-line hover:border-court-200'
+                                ? 'bg-lime-400 text-ink-900 ring-2 ring-ink-900'
+                                : 'bg-surface text-ink-900 border border-line hover:border-ink-200'
                             }`}
                           >
                             {player?.name?.split(' ')[0] || '?'}
@@ -857,7 +857,7 @@ export default function GameDetails() {
                       })}
                     </div>
                   ) : (
-                    <p className="flex-1 font-extrabold text-court-900 truncate">
+                    <p className="flex-1 font-extrabold text-ink-900 truncate">
                       {teamName(t.id)}
                       {t.id === game.winner_team_id && ' 🏆'}
                     </p>
@@ -871,12 +871,12 @@ export default function GameDetails() {
           {/* Classificação (todos contra todos) */}
           {!isSobeDesce && roundsStarted && tctStandings.length > 0 && (
             <div className="card">
-              <h3 className="text-lg text-court-900 mb-3">Classificação — fase de grupo</h3>
+              <h3 className="text-lg text-ink-900 mb-3">Classificação — fase de grupo</h3>
               <div className="space-y-1.5">
                 {tctStandings.map((s, i) => (
                   <div key={s.team.id} className="flex items-center gap-3 text-sm py-1.5 border-b border-line last:border-0">
-                    <span className="w-6 font-extrabold text-court-900 tabular-nums">{i + 1}</span>
-                    <span className="flex-1 font-extrabold text-court-900 truncate">{teamName(s.team.id)}</span>
+                    <span className="w-6 font-extrabold text-ink-900 tabular-nums">{i + 1}</span>
+                    <span className="flex-1 font-extrabold text-ink-900 truncate">{teamName(s.team.id)}</span>
                     <span className="text-muted tabular-nums" title="Vitórias">{s.wins}V</span>
                     <span className="text-muted tabular-nums w-12 text-right" title="Diferença de pontos">
                       {s.diff > 0 ? '+' : ''}{s.diff}
@@ -893,12 +893,12 @@ export default function GameDetails() {
             const phase = ms[0]?.phase || 'group'
             const isCurrent = r === maxRound && game.status === 'in_progress'
             return (
-              <div key={r} className={`card ${isCurrent ? 'ring-2 ring-volt-400' : ''}`}>
+              <div key={r} className={`card ${isCurrent ? 'ring-2 ring-lime-400' : ''}`}>
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-lg text-court-900">
+                  <h3 className="text-lg text-ink-900">
                     Ronda {r}
                     {phase !== 'group' && (
-                      <span className="ml-2 text-xs font-extrabold uppercase tracking-wide bg-court-900 text-volt-400 px-2.5 py-1 rounded-full">
+                      <span className="ml-2 text-xs font-extrabold uppercase tracking-wide bg-ink-900 text-lime-400 px-2.5 py-1 rounded-full">
                         {PHASE_LABEL[phase]}
                       </span>
                     )}
@@ -923,17 +923,17 @@ export default function GameDetails() {
                       const isWinner = done && m.winner_team_id === teamId
                       return (
                         <div className={`flex items-center gap-3 rounded-ctrl px-3 py-2.5 ${
-                          isWinner ? 'bg-volt-400/25' : 'bg-surface'
+                          isWinner ? 'bg-lime-400/25' : 'bg-surface'
                         }`}>
                           <span className={`flex-1 min-w-0 text-sm font-extrabold ${
-                            done && !isWinner ? 'text-muted' : 'text-court-900'
+                            done && !isWinner ? 'text-muted' : 'text-ink-900'
                           }`}>
                             {teamName(teamId)}
-                            {isWinner && <span className="ml-1.5 text-volt-500">🏆</span>}
+                            {isWinner && <span className="ml-1.5 text-lime-600">🏆</span>}
                           </span>
                           {done ? (
                             <span className={`text-xl font-extrabold tabular-nums shrink-0 ${
-                              isWinner ? 'text-court-900' : 'text-muted'
+                              isWinner ? 'text-ink-900' : 'text-muted'
                             }`}>
                               {scoreVal}
                             </span>
@@ -950,7 +950,7 @@ export default function GameDetails() {
                       )
                     }
                     return (
-                      <div key={m.id} className="rounded-ctrl bg-sand p-2.5">
+                      <div key={m.id} className="rounded-ctrl bg-canvas p-2.5">
                         <p className="text-[11px] font-extrabold uppercase tracking-widest text-muted mb-2 px-1">
                           Campo {m.court_number}
                         </p>
@@ -962,7 +962,7 @@ export default function GameDetails() {
                         {editable && s.a !== '' && s.b !== '' && (
                           <button
                             onClick={() => handleSaveScore(m)}
-                            className="mt-2.5 w-full py-2.5 rounded-ctrl bg-court-900 text-volt-400 text-sm font-extrabold transition-all duration-fast active:scale-[0.98]"
+                            className="mt-2.5 w-full py-2.5 rounded-ctrl bg-ink-900 text-lime-400 text-sm font-extrabold transition-all duration-fast active:scale-[0.98]"
                           >
                             Guardar resultado
                           </button>
@@ -980,13 +980,13 @@ export default function GameDetails() {
             <div className="space-y-3">
               {!roundsStarted && (
                 <PrimaryButton onClick={handleStartRound1} disabled={busy} className="w-full">
-                  <Play size={19} />
+                  <Play size={20} />
                   {busy ? 'A sortear…' : 'Iniciar Ronda 1'}
                 </PrimaryButton>
               )}
               {roundsStarted && canAdvance && (
                 <PrimaryButton onClick={handleAdvance} disabled={busy} className="w-full">
-                  <ChevronRight size={19} />
+                  <ChevronRight size={20} />
                   {busy ? 'A processar…'
                     : inGroupPhase ? `Terminar Ronda ${maxRound}`
                     : `Terminar Ronda ${maxRound} — sortear ${PHASE_LABEL[nextPhase]?.toLowerCase()}`}
@@ -994,7 +994,7 @@ export default function GameDetails() {
               )}
               {canFinalize && (
                 <PrimaryButton variant="navy" onClick={() => handleFinalize(false)} disabled={busy} className="w-full">
-                  <Trophy size={19} />
+                  <Trophy size={20} />
                   {busy ? 'A finalizar…' : 'Finalizar Mix'}
                 </PrimaryButton>
               )}
@@ -1006,7 +1006,7 @@ export default function GameDetails() {
               {/* Sair mais cedo — disponível assim que houver pelo menos um resultado guardado */}
               {roundsStarted && !canFinalize && anyScoreSaved && (
                 <PrimaryButton variant="danger" onClick={() => handleFinalize(true)} disabled={busy} className="w-full">
-                  <Trophy size={19} />
+                  <Trophy size={20} />
                   {busy ? 'A finalizar…' : 'Terminar Mix'}
                 </PrimaryButton>
               )}
@@ -1018,7 +1018,7 @@ export default function GameDetails() {
       {/* Jogadores (antes do sorteio) */}
       {!mixStarted && (
         <div className="card">
-          <h3 className="text-lg text-court-900 mb-4">Jogadores</h3>
+          <h3 className="text-lg text-ink-900 mb-4">Jogadores</h3>
 
           {people.length === 0 ? (
             <p className="text-muted text-sm text-center py-4">
@@ -1030,12 +1030,12 @@ export default function GameDetails() {
                 <div
                   key={`${person.id}-${idx}`}
                   className={`rounded-ctrl p-3.5 flex items-center gap-3 ${
-                    person.id === user.id ? 'bg-volt-400/20' : 'bg-sand'
+                    person.id === user.id ? 'bg-lime-400/20' : 'bg-canvas'
                   }`}
                 >
                   <Avatar name={person.name} url={person.avatar_url} size="w-10 h-10 text-sm" />
                   <div className="flex-1 min-w-0">
-                    <p className="font-extrabold text-court-900 truncate">
+                    <p className="font-extrabold text-ink-900 truncate">
                       {person.name}
                       {person.id === user.id && (
                         <span className="text-muted font-normal text-sm"> · tu</span>
@@ -1052,7 +1052,7 @@ export default function GameDetails() {
                       title={`Remover ${person.name}`}
                       className="w-9 h-9 flex items-center justify-center rounded-full text-muted hover:text-danger hover:bg-danger/10 transition-colors duration-fast shrink-0"
                     >
-                      <X size={17} />
+                      <X size={16} />
                     </button>
                   )}
                 </div>
@@ -1078,7 +1078,7 @@ export default function GameDetails() {
               disabled={addingTestUser}
               className="w-full"
             >
-              <UserPlus size={19} />
+              <UserPlus size={20} />
               {addingTestUser ? 'A adicionar…' : 'Adicionar jogador de teste'}
             </PrimaryButton>
           )}
@@ -1090,7 +1090,7 @@ export default function GameDetails() {
                 disabled={joining}
                 className="w-full"
               >
-                <User size={19} />
+                <User size={20} />
                 {joining ? 'A inscrever…' : 'Entrar sozinho'}
               </PrimaryButton>
               {/* Guests join alone only — the partner picker is a member list */}
@@ -1101,7 +1101,7 @@ export default function GameDetails() {
                   disabled={joining}
                   className="w-full"
                 >
-                  <UserPlus size={19} />
+                  <UserPlus size={20} />
                   Entrar com parceiro
                 </PrimaryButton>
               )}
@@ -1111,7 +1111,7 @@ export default function GameDetails() {
           {joinMode === 'partner' && (
             <div className="card space-y-4 animate-fade-up">
               <div>
-                <label className="block text-sm font-extrabold text-court-900 mb-2">
+                <label className="block text-sm font-extrabold text-ink-900 mb-2">
                   Escolhe o teu parceiro
                 </label>
                 <Select
