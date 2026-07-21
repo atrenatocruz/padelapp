@@ -100,7 +100,7 @@ export default function Profile() {
     setLoading(true)
 
     try {
-      const updates = { name, preferred_side: preferredSide, birthday, gender }
+      const updates = { name, preferred_side: preferredSide, birthday: birthday || null, gender }
       if (phone) {
         updates.phone_hash = await hashPhone(phone)
       }
