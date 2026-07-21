@@ -10,6 +10,10 @@ const RECONCILE_INTERVAL_MS = 60 * 1000
 // message covering every open mix at once, not one message per mix.
 let debounceTimer = null
 let lastPostedHash = null
+// Sticky across debounce coalescing: if ANY change folded into the next
+// repost was a create/edit, the eventual send tags @all — a rapid
+// create+edit within the debounce window doesn't lose the tag.
+let pendingTagAll = false
 
 function hash(str) {
   let h = 0
@@ -19,7 +23,7 @@ function hash(str) {
   return h
 }
 
-async function postCombinedRoster(sendText) {
+async function postCombinedRoster(sendText, getGroupMentions, { tagAll = false } = {}) {
   const settings = await getSettings()
   if (!settings.whatsapp_group_jid) return
 
@@ -31,40 +35,56 @@ async function postCombinedRoster(sendText) {
   const nextHash = hash(text)
   if (nextHash === lastPostedHash) return
 
-  await sendText(settings.whatsapp_group_jid, text)
+  if (tagAll) {
+    const mentions = await getGroupMentions(settings.whatsapp_group_jid)
+    await sendText(settings.whatsapp_group_jid, `📢 @all\n\n${text}`, { mentions })
+  } else {
+    await sendText(settings.whatsapp_group_jid, text)
+  }
   lastPostedHash = nextHash
 }
 
-function scheduleRepost(sendText) {
+function scheduleRepost(sendText, getGroupMentions, { tagAll = false } = {}) {
+  pendingTagAll = pendingTagAll || tagAll
   if (debounceTimer) clearTimeout(debounceTimer)
   debounceTimer = setTimeout(() => {
     debounceTimer = null
-    postCombinedRoster(sendText).catch((err) => console.error('Failed to repost combined roster:', err))
+    const shouldTagAll = pendingTagAll
+    pendingTagAll = false
+    postCombinedRoster(sendText, getGroupMentions, { tagAll: shouldTagAll }).catch((err) =>
+      console.error('Failed to repost combined roster:', err)
+    )
   }, DEBOUNCE_MS)
 }
 
 /** Wires Supabase Realtime so any game/participant change — from the app OR from the bot's own WhatsApp-driven writes, for ANY currently open mix — results in a fresh combined roster repost covering every open mix. */
-export function startSync({ sendText }) {
+export function startSync({ sendText, getGroupMentions }) {
   supabase
     .channel('whatsapp-bot-games')
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'games' }, async (payload) => {
       if (payload.new.status !== 'open') return
-      scheduleRepost(sendText)
+      // A brand-new mix — tag everyone so the group notices.
+      scheduleRepost(sendText, getGroupMentions, { tagAll: true })
     })
     .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'games' }, async (payload) => {
       const settings = await getSettings()
       if (!settings.whatsapp_group_jid) return
 
       const wasCancelled = payload.old.status === 'cancelled'
-      if (payload.new.status === 'cancelled' && !wasCancelled) {
+      const justCancelled = payload.new.status === 'cancelled' && !wasCancelled
+      if (justCancelled) {
+        const mentions = await getGroupMentions(settings.whatsapp_group_jid)
         await sendText(
           settings.whatsapp_group_jid,
-          `🤖 O mix "${payload.new.title}" foi cancelado ❌${HELP_FOOTER}`
+          `📢 @all\n\n🤖 O mix "${payload.new.title}" foi cancelado ❌${HELP_FOOTER}`,
+          { mentions }
         )
       }
       // Refresh the combined view either way (drops the cancelled mix,
-      // or reflects whatever else changed).
-      scheduleRepost(sendText)
+      // or reflects whatever else changed). The cancellation notice above
+      // already tagged everyone, so don't double-tag on its follow-up
+      // refresh — any other edit still tags.
+      scheduleRepost(sendText, getGroupMentions, { tagAll: !justCancelled })
     })
     .subscribe()
 
@@ -73,15 +93,19 @@ export function startSync({ sendText }) {
     .on('postgres_changes', { event: '*', schema: 'public', table: 'participants' }, () => {
       // Always recomputed fresh from the DB at post time, and the hash
       // check above skips a no-op send — no need to pre-filter which
-      // mix this row belongs to.
-      scheduleRepost(sendText)
+      // mix this row belongs to. Someone joining/leaving isn't a
+      // create/edit, so this never tags @all.
+      scheduleRepost(sendText, getGroupMentions)
     })
     .subscribe()
 
   // Safety net: catches any change missed during a transient Realtime
   // disconnect, without spamming (only reposts if the combined roster
-  // actually differs from what was last sent).
+  // actually differs from what was last sent). Never tags @all — it's
+  // not a new create/edit event, just catching up.
   setInterval(() => {
-    postCombinedRoster(sendText).catch((err) => console.error('Reconciliation tick failed:', err))
+    postCombinedRoster(sendText, getGroupMentions).catch((err) =>
+      console.error('Reconciliation tick failed:', err)
+    )
   }, RECONCILE_INTERVAL_MS)
 }

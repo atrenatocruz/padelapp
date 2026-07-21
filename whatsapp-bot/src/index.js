@@ -5,7 +5,7 @@ import { handleGroupMessage } from './commands.js'
 import { startSync } from './sync.js'
 
 async function main() {
-  const { sendText } = await connectWhatsApp({
+  const { sendText, getGroupMentions } = await connectWhatsApp({
     onGroupMessage: (payload) => {
       handleGroupMessage(payload, { sendText }).catch((err) => {
         console.error('Failed to handle group message:', err)
@@ -13,7 +13,7 @@ async function main() {
     },
   })
 
-  startSync({ sendText })
+  startSync({ sendText, getGroupMentions })
 
   // Minimal health endpoint so Fly.io's http_service check keeps the
   // machine (and the WhatsApp socket it holds) running.
