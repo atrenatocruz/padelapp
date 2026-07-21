@@ -193,15 +193,36 @@ CREATE POLICY "Org admins can update their organization"
 -- (No direct INSERT/UPDATE-of-others policy needed — signup creates your
 -- own row via the trigger below, SECURITY DEFINER; you update your own
 -- row via `auth.uid() = id`.)
+--
+-- The org-mate check below is a SECURITY DEFINER function (mirrors
+-- is_org_admin() above) rather than an inline EXISTS — memberships has its
+-- own RLS, and a non-admin's "See own memberships" policy only lets them
+-- see their OWN row. An inline subquery here would run under the CALLING
+-- user's RLS, so the m2 side could only ever match the caller's own
+-- membership — silently collapsing "or profiles of org-mates" to nothing
+-- for every non-admin. SECURITY DEFINER bypasses that.
+CREATE OR REPLACE FUNCTION shares_org_with(p_profile_id UUID)
+RETURNS BOOLEAN
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+STABLE
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM memberships m1
+    JOIN memberships m2 ON m1.organization_id = m2.organization_id
+    WHERE m1.user_id = auth.uid() AND m2.user_id = p_profile_id
+  );
+$$;
+
+REVOKE ALL ON FUNCTION shares_org_with(UUID) FROM public;
+GRANT EXECUTE ON FUNCTION shares_org_with(UUID) TO authenticated;
+
 CREATE POLICY "See own profile or profiles of org-mates"
   ON profiles FOR SELECT
   USING (
     id = auth.uid()
-    OR EXISTS (
-      SELECT 1 FROM memberships m1
-      JOIN memberships m2 ON m1.organization_id = m2.organization_id
-      WHERE m1.user_id = auth.uid() AND m2.user_id = profiles.id
-    )
+    OR shares_org_with(id)
   );
 
 CREATE POLICY "Users can update own profile"
