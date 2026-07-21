@@ -1029,7 +1029,7 @@ Expected: no output, exit code 0.
 - [ ] **Step 5: Manual QA checklist (write this down, run it against the real bot + WhatsApp group when deployed)**
 
 1. Fill a mix to capacity. Send "in" (or "alinho") from an account with no pending confirmation. Confirm the bot replies "🤖 Mix cheio! Queres entrar como suplente? Responde com *Sim* ou *Não*."
-2. Reply "Sim". Confirm: no direct reply, but the group roster reposts showing you in the "Suplentes" section (once Task 4 ships) or otherwise unchanged in the numbered slots (before Task 4).
+2. Reply "Sim". Confirm you get a direct reply confirming you're on the waitlist (added post-review: the bot's roster never renders suplentes, so without an explicit reply this step was silently giving no feedback at all — see the final whole-branch review's Important finding).
 3. Send "in" again from the same account for the same full mix. Confirm the bot replies "🤖 Já estás na lista de suplentes deste mix! 🎾" (not another suplente prompt).
 4. From a different full mix, reply with something ambiguous like "talvez" after being asked. Confirm one re-prompt ("Não percebi 🤔 …"), then send another ambiguous message — confirm no second re-prompt (silently ignored / falls through).
 5. Trigger the prompt, then reply "Não". Confirm no reply and no participants row was inserted (check the app or `SUPABASE.../participants`).
