@@ -135,6 +135,7 @@ export async function handleGroupMessage({ groupJid, senderPn, text, message }, 
 
     if (normalized === 'nao') {
       pendingSuplenteConfirmations.delete(key)
+      await reply('🤖 Sem problema, não entraste na lista de suplentes. Inscreve-te para o próximo mix! 🎾')
       return
     }
 

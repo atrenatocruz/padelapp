@@ -22,10 +22,25 @@ export async function loadGame(gameId) {
     throw new Error(`Failed to load participants for game ${gameId}: ${participantsError.message}`)
   }
 
+  // FIFO queue order, matching the promotion order in check_game_promote().
+  const { data: waitlisted, error: waitlistedError } = await supabase
+    .from('participants')
+    .select('user_id')
+    .eq('game_id', gameId)
+    .eq('status', 'waitlisted')
+    .order('created_at', { ascending: true })
+
+  if (waitlistedError) {
+    throw new Error(`Failed to load waitlisted participants for game ${gameId}: ${waitlistedError.message}`)
+  }
+
   const profileIds = new Set()
   for (const row of participants) {
     profileIds.add(row.user_id)
     if (row.partner_id) profileIds.add(row.partner_id)
+  }
+  for (const row of waitlisted) {
+    profileIds.add(row.user_id)
   }
 
   let profilesById = new Map()
@@ -47,8 +62,10 @@ export async function loadGame(gameId) {
     }
   }
 
+  const suplentes = waitlisted.map((row) => profilesById.get(row.user_id) || 'Jogador')
+
   const capacity = game.max_players || game.num_courts * 4
-  return { game, people, capacity }
+  return { game, people, capacity, suplentes }
 }
 
 /** All mixes currently open for signups — the source of truth for "which mixes exist right now" (replaces the old single active-game pointer, since several can be open at once). */
@@ -88,7 +105,7 @@ export function formatDateTime(isoDate) {
 }
 
 /** Builds one mix's block of text (no footer — footer is added once for the whole combined message). `showCode` is false when this is the only open mix — nothing to disambiguate, so the code and the join/leave instructions drop it. */
-function buildMixBlock({ game, people, capacity }, { showCode }) {
+function buildMixBlock({ game, people, capacity, suplentes = [] }, { showCode }) {
   const isCancelled = game.status === 'cancelled'
   const lines = []
 
@@ -116,6 +133,9 @@ function buildMixBlock({ game, people, capacity }, { showCode }) {
       lines.push(`🙋 Escreve *In ${game.short_code}* para entrares, *Out ${game.short_code}* para saíres`)
     } else {
       lines.push(`🙋 Escreve *In* ou *Alinho* para entrares, *Out* ou *Fora* para saíres`)
+    }
+    if (suplentes.length > 0) {
+      lines.push(`👥 *Suplentes:* ${suplentes.map(firstNameLastInitial).join(', ')}`)
     }
   }
 
