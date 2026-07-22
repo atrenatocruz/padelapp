@@ -394,22 +394,57 @@ CREATE TRIGGER game_full_trigger
 AFTER INSERT OR UPDATE ON participants
 FOR EACH ROW EXECUTE FUNCTION check_game_full();
 
--- Reopen a closed (not started) game when someone leaves and frees a slot.
-CREATE OR REPLACE FUNCTION check_game_reopen()
+-- Promote suplentes (waitlisted participants) into freed slots when someone
+-- leaves, oldest-first; only reopens the game for fresh signups once the
+-- waitlist is empty. Loops because a single DELETE can free 2 slots at
+-- once (a pair leaving), and suplentes are solo — one promotion per slot.
+CREATE OR REPLACE FUNCTION check_game_promote()
 RETURNS TRIGGER AS $$
+DECLARE
+  cap INTEGER;
+  people INTEGER;
+  v_waitlisted_id UUID;
 BEGIN
-  UPDATE games g SET status = 'open', updated_at = NOW()
-  WHERE g.id = OLD.game_id AND g.status = 'closed'
-    AND (SELECT COALESCE(SUM(1 + CASE WHEN partner_id IS NOT NULL THEN 1 ELSE 0 END), 0)
-         FROM participants WHERE game_id = OLD.game_id AND status = 'confirmed')
-        < COALESCE(g.max_players, g.num_courts * 4);
+  SELECT COALESCE(max_players, num_courts * 4) INTO cap FROM games WHERE id = OLD.game_id;
+
+  LOOP
+    SELECT COALESCE(SUM(1 + CASE WHEN partner_id IS NOT NULL THEN 1 ELSE 0 END), 0)
+      INTO people
+      FROM participants
+     WHERE game_id = OLD.game_id AND status = 'confirmed';
+
+    EXIT WHEN people >= cap;
+
+    SELECT id INTO v_waitlisted_id
+      FROM participants
+     WHERE game_id = OLD.game_id AND status = 'waitlisted'
+     ORDER BY created_at
+     LIMIT 1;
+
+    EXIT WHEN v_waitlisted_id IS NULL;
+
+    UPDATE participants SET status = 'confirmed' WHERE id = v_waitlisted_id;
+  END LOOP;
+
+  -- No one left to promote but a slot is still free — reopen for fresh
+  -- signups, same condition check_game_reopen used to check.
+  SELECT COALESCE(SUM(1 + CASE WHEN partner_id IS NOT NULL THEN 1 ELSE 0 END), 0)
+    INTO people
+    FROM participants
+   WHERE game_id = OLD.game_id AND status = 'confirmed';
+
+  IF people < cap THEN
+    UPDATE games SET status = 'open', updated_at = NOW()
+    WHERE id = OLD.game_id AND status = 'closed';
+  END IF;
+
   RETURN OLD;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
-CREATE TRIGGER game_reopen_trigger
+CREATE TRIGGER game_promote_trigger
 AFTER DELETE ON participants
-FOR EACH ROW EXECUTE FUNCTION check_game_reopen();
+FOR EACH ROW EXECUTE FUNCTION check_game_promote();
 
 -- Create a profile (identity only — no membership) on signup. Attaching
 -- to an organization is a separate step (see join_organization below),

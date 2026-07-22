@@ -18,6 +18,7 @@ export default function GameDetails() {
   const { user, profile, isGuest, isAdmin, currentOrganizationId } = useAuth()
   const [game, setGame] = useState(null)
   const [participants, setParticipants] = useState([])
+  const [waitlist, setWaitlist] = useState([])
   const [teams, setTeams] = useState([])
   const [matches, setMatches] = useState([])
   const [loading, setLoading] = useState(true)
@@ -94,9 +95,13 @@ export default function GameDetails() {
           partner:profiles!participants_partner_id_fkey (id, name, preferred_side, avatar_url)
         `)
         .eq('game_id', id)
-        .eq('status', 'confirmed')
+        .in('status', ['confirmed', 'waitlisted'])
+        .order('created_at')
 
       if (participantsError) throw participantsError
+
+      const confirmedRows = (participantsData || []).filter((p) => p.status === 'confirmed')
+      const waitlistRows = (participantsData || []).filter((p) => p.status === 'waitlisted')
 
       // Mix data (duplas + jogos sorteados)
       const { data: teamsData } = await supabase
@@ -115,10 +120,14 @@ export default function GameDetails() {
         .order('round_number')
         .order('court_number')
 
-      setParticipants((participantsData || []).map((p) => ({
+      setParticipants((confirmedRows || []).map((p) => ({
         ...p,
         user: attachMembership(p.user),
         partner: attachMembership(p.partner),
+      })))
+      setWaitlist((waitlistRows || []).map((p) => ({
+        ...p,
+        user: attachMembership(p.user),
       })))
       setTeams((teamsData || []).map((t) => ({
         ...t,
@@ -240,7 +249,12 @@ export default function GameDetails() {
 
       const { error: participantError } = await supabase
         .from('participants')
-        .insert([{ game_id: id, user_id: data.user_id, status: 'confirmed', joined_alone: true }])
+        .insert([{
+          game_id: id,
+          user_id: data.user_id,
+          status: peopleCount < capacity ? 'confirmed' : 'waitlisted',
+          joined_alone: true,
+        }])
       if (participantError) throw participantError
 
       loadGameDetails()
@@ -263,11 +277,47 @@ export default function GameDetails() {
         .eq('user_id', user.id)
 
       if (error) throw error
-      // (a DB trigger reopens the game if it was closed and a slot freed up)
+      // (a DB trigger promotes the first suplente, or reopens the game if
+      // the waitlist is empty and it was closed)
       loadGameDetails()
     } catch (error) {
       console.error('Error leaving game:', error)
       alert('Erro ao sair do jogo. Tenta novamente.')
+    }
+  }
+
+  const handleJoinAsSuplente = async () => {
+    setJoining(true)
+    setJoinError('')
+    try {
+      const { error } = await supabase
+        .from('participants')
+        .insert([{ game_id: id, user_id: user.id, status: 'waitlisted', joined_alone: true }])
+
+      if (error) throw error
+      loadGameDetails()
+    } catch (error) {
+      console.error('Error joining waitlist:', error)
+      setJoinError('Não conseguimos inscrever-te como suplente. Tenta novamente.')
+    } finally {
+      setJoining(false)
+    }
+  }
+
+  const handleLeaveWaitlist = async () => {
+    try {
+      const { error } = await supabase
+        .from('participants')
+        .delete()
+        .eq('game_id', id)
+        .eq('user_id', user.id)
+        .eq('status', 'waitlisted')
+
+      if (error) throw error
+      loadGameDetails()
+    } catch (error) {
+      console.error('Error leaving waitlist:', error)
+      alert('Erro ao sair da lista de suplentes. Tenta novamente.')
     }
   }
 
@@ -618,6 +668,8 @@ export default function GameDetails() {
   const peopleCount = countPeople(participants)
   const capacity = game?.max_players || numCourts * 4
   const isUserJoined = participants.some(p => p.user_id === user.id || p.partner_id === user.id)
+  const waitlistPeople = waitlist.map(w => ({ ...w.user, rowOwner: true, rowId: w.id, hasPartner: false }))
+  const isUserWaitlisted = waitlist.some(w => w.user_id === user.id)
   const canJoin = game?.status === 'open' && peopleCount < capacity && !isUserJoined
   const mixStarted = game?.status === 'in_progress' || game?.status === 'finished'
   // A full game counts as closed even if the stored status lagged behind
@@ -1062,6 +1114,47 @@ export default function GameDetails() {
         </div>
       )}
 
+      {/* Suplentes (lista de espera) */}
+      {!mixStarted && waitlistPeople.length > 0 && (
+        <div className="card">
+          <h3 className="text-lg text-ink-900 mb-4">Suplentes</h3>
+          <div className="space-y-2.5">
+            {waitlistPeople.map((person, idx) => (
+              <div
+                key={`${person.id}-${idx}`}
+                className={`rounded-ctrl p-3.5 flex items-center gap-3 ${
+                  person.id === user.id ? 'bg-lime-400/20' : 'bg-canvas'
+                }`}
+              >
+                <span className="w-6 text-center font-extrabold text-muted text-sm shrink-0">{idx + 1}º</span>
+                <Avatar name={person.name} url={person.avatar_url} size="w-10 h-10 text-sm" />
+                <div className="flex-1 min-w-0">
+                  <p className="font-extrabold text-ink-900 truncate">
+                    {person.name}
+                    {person.id === user.id && (
+                      <span className="text-muted font-normal text-sm"> · tu</span>
+                    )}
+                  </p>
+                </div>
+                {person.is_guest
+                  ? <GuestBadge label={person.is_test ? 'Teste' : 'Convidado'} />
+                  : <LevelBadge level={person.level} />}
+                {isAdmin && (
+                  <button
+                    onClick={() => handleRemovePerson(person)}
+                    disabled={busy}
+                    title={`Remover ${person.name}`}
+                    className="w-9 h-9 flex items-center justify-center rounded-full text-muted hover:text-danger hover:bg-danger/10 transition-colors duration-fast shrink-0"
+                  >
+                    <X size={16} />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Ações de inscrição */}
       {!mixStarted && (
         <div className="space-y-3">
@@ -1071,7 +1164,7 @@ export default function GameDetails() {
             </div>
           )}
 
-          {isAdmin && peopleCount < capacity && (
+          {isAdmin && (
             <PrimaryButton
               variant="ghost"
               onClick={handleAddTestUser}
@@ -1079,7 +1172,11 @@ export default function GameDetails() {
               className="w-full"
             >
               <UserPlus size={20} />
-              {addingTestUser ? 'A adicionar…' : 'Adicionar jogador de teste'}
+              {addingTestUser
+                ? 'A adicionar…'
+                : peopleCount < capacity
+                  ? 'Adicionar jogador de teste'
+                  : 'Adicionar jogador de teste como suplente'}
             </PrimaryButton>
           )}
 
@@ -1106,6 +1203,18 @@ export default function GameDetails() {
                 </PrimaryButton>
               )}
             </>
+          )}
+
+          {isFull && !isUserJoined && !isUserWaitlisted && (
+            <PrimaryButton
+              variant="ghost"
+              onClick={handleJoinAsSuplente}
+              disabled={joining}
+              className="w-full"
+            >
+              <UserPlus size={20} />
+              {joining ? 'A inscrever…' : 'Entrar como suplente'}
+            </PrimaryButton>
           )}
 
           {joinMode === 'partner' && (
@@ -1148,6 +1257,12 @@ export default function GameDetails() {
           {isUserJoined && (game.status === 'open' || game.status === 'closed') && (
             <PrimaryButton variant="danger" onClick={handleLeaveGame} className="w-full">
               Sair do jogo
+            </PrimaryButton>
+          )}
+
+          {isUserWaitlisted && (
+            <PrimaryButton variant="danger" onClick={handleLeaveWaitlist} className="w-full">
+              Sair da lista de suplentes
             </PrimaryButton>
           )}
         </div>
